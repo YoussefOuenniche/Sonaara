@@ -47,25 +47,28 @@ export async function getLastPlayedTrack(accessToken: string): Promise<Track | n
   return rawItemToTrack(item);
 }
 
-// Convert a "YYYY-MM-DD" key to a local-midnight timestamp range
-function dayKeyToWindow(key: string): { start: number; end: number } {
-  const [y, m, d] = key.split("-").map(Number);
-  const start = new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
-  const end   = new Date(y, m - 1, d + 1, 0, 0, 0, 0).getTime() - 1;
-  return { start, end };
+// Format a Date as YYYY-MM-DD in the given IANA timezone (en-CA gives that format natively)
+function dateStringInTz(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
-// Return a YYYY-MM-DD key for N days ago
-export function getDayKey(daysAgo: number): string {
-  const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Return a YYYY-MM-DD key for N days ago in the given timezone (defaults to UTC)
+export function getDayKey(daysAgo: number, tz = "UTC"): string {
+  const todayStr = dateStringInTz(new Date(), tz);
+  const [y, m, d] = todayStr.split("-").map(Number);
+  const target = new Date(y, m - 1, d - daysAgo);
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
 }
 
-// Fetch the 50 most recent played items and group them by YYYY-MM-DD key.
-// One API call, covers as many days as those 50 items span.
+// Fetch the 50 most recent played items and group them by YYYY-MM-DD key in the given timezone.
 export async function getRecentTracksGrouped(
-  accessToken: string
+  accessToken: string,
+  tz = "UTC"
 ): Promise<Record<string, Track[]>> {
   const data = await spotifyFetch(
     "/me/player/recently-played?limit=50",
@@ -75,41 +78,26 @@ export async function getRecentTracksGrouped(
 
   const grouped: Record<string, Track[]> = {};
   for (const item of data.items as RawTrackItem[]) {
-    const d = new Date(item.played_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const key = dateStringInTz(new Date(item.played_at), tz);
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(rawItemToTrack(item));
   }
   return grouped;
 }
 
-// Get window for "yesterday" (local midnight to midnight)
-export function getYesterdayWindow(): { start: number; end: number } {
-  const now = new Date();
-  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const yesterdayMidnight = new Date(todayMidnight.getTime() - 86400000);
-  return {
-    start: yesterdayMidnight.getTime(),
-    end: todayMidnight.getTime() - 1,
-  };
-}
-
-// Get all tracks played yesterday (up to 50 due to Spotify API limit)
-export async function getYesterdayTracks(accessToken: string): Promise<Track[]> {
-  const { start, end } = getYesterdayWindow();
+// Get all tracks played yesterday, filtered by the user's timezone
+export async function getYesterdayTracks(accessToken: string, tz = "UTC"): Promise<Track[]> {
+  const yesterdayKey = getDayKey(1, tz);
 
   const data = await spotifyFetch(
-    `/me/player/recently-played?limit=50&after=${start}`,
+    "/me/player/recently-played?limit=50",
     accessToken
   );
 
   if (!data.items?.length) return [];
 
   return (data.items as RawTrackItem[])
-    .filter((item) => {
-      const playedAt = new Date(item.played_at).getTime();
-      return playedAt >= start && playedAt <= end;
-    })
+    .filter((item) => dateStringInTz(new Date(item.played_at), tz) === yesterdayKey)
     .map(rawItemToTrack);
 }
 

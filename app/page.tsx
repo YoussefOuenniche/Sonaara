@@ -42,14 +42,6 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <p
-          className="text-sm leading-relaxed max-w-xs"
-          style={{ color: "var(--lilac-light)", opacity: 0.3 }}
-        >
-          Connect your Spotify to see your latest track and a daily 3-emoji
-          Signature that captures your listening mood.
-        </p>
-
         <LoginButton />
       </div>
     </div>

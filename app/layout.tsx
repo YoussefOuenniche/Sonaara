@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TimezoneSync } from "@/components/TimezoneSync";
 
 export const metadata: Metadata = {
   title: "Sonaara",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <TimezoneSync />
+        {children}
+      </body>
     </html>
   );
 }

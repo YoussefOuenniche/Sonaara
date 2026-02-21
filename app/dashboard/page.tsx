@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSession, getAccessToken } from "@/lib/session";
 import { upsertUser, getUser } from "@/lib/store";
 import {
@@ -17,10 +18,6 @@ import { FriendsSection } from "@/components/FriendsSection";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { Signature, Track, TrackWithGenres } from "@/types";
 
-function getYesterdayKey(): string {
-  return getDayKey(1);
-}
-
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session.accessToken) redirect("/");
@@ -28,16 +25,19 @@ export default async function DashboardPage() {
   const accessToken = await getAccessToken();
   if (!accessToken) redirect("/");
 
+  const cookieStore = await cookies();
+  const tz = decodeURIComponent(cookieStore.get("sonaara_tz")?.value ?? "UTC");
+
   const displayName = (session.userName ?? "there").split(" ")[0];
   const userId = session.userId ?? "";
-  const yesterdayKey = getYesterdayKey();
+  const yesterdayKey = getDayKey(1, tz);
 
   // Fetch in parallel: stored user, last played, yesterday's tracks, recent grouped
   const [existingUser, lastTrack, yesterdayRawTracks, recentGrouped] = await Promise.all([
     userId ? getUser(userId) : Promise.resolve(null),
     getLastPlayedTrack(accessToken).catch(() => null),
-    getYesterdayTracks(accessToken).catch(() => []),
-    getRecentTracksGrouped(accessToken).catch(() => ({} as Record<string, Track[]>)),
+    getYesterdayTracks(accessToken, tz).catch(() => []),
+    getRecentTracksGrouped(accessToken, tz).catch(() => ({} as Record<string, Track[]>)),
   ]);
 
   // Clean stored history (removes any "undefined" or malformed keys)
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
 
   // ── Backfill: generate signatures for past 5 days not yet in history ─────
   // Keys for days 2–6 ago (i.e. all "history" days, not including yesterday)
-  const pastDayKeys = [2, 3, 4, 5, 6].map((n) => ({ n, key: getDayKey(n) }));
+  const pastDayKeys = [2, 3, 4, 5, 6].map((n) => ({ n, key: getDayKey(n, tz) }));
   const missingKeys = pastDayKeys.filter(({ key }) => !(key in storedHistory));
 
   const backfillHistory: Record<string, Signature | null> = {};
