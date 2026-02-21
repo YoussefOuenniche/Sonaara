@@ -29,12 +29,17 @@ export default async function HomePage() {
         {/* Vinyl logo + wordmark */}
         <div className="flex flex-col items-center gap-5">
           <VinylLogo size={96} />
-          <span
-            className="font-bold text-4xl tracking-tight"
-            style={{ color: "var(--foreground)" }}
-          >
-            sonaara
-          </span>
+          <div className="flex flex-col items-center gap-1">
+            <span
+              className="font-bold text-4xl tracking-tight"
+              style={{ color: "var(--foreground)" }}
+            >
+              sonaara
+            </span>
+            <p style={{ color: "var(--lilac)", opacity: 0.45 }} className="text-sm">
+              Your music, distilled.
+            </p>
+          </div>
         </div>
 
         <LoginButton />
