@@ -104,9 +104,9 @@ export default async function DashboardPage() {
     [yesterdayKey]: todaySignature,
   };
 
-  // Persist to store non-blocking
+  // Persist to store (awaited so the write completes before the response is sent)
   if (userId) {
-    upsertUser(
+    await upsertUser(
       {
         userId,
         userName: session.userName ?? "Unknown",
