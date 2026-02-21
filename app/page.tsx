@@ -43,6 +43,7 @@ export default async function HomePage() {
         </div>
 
         <LoginButton />
+        <p style={{ color: "var(--lilac)", opacity: 0.2 }} className="text-xs">v2</p>
       </div>
     </div>
   );
