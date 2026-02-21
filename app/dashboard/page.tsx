@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   if (!session.accessToken) redirect("/");
 
   const accessToken = await getAccessToken();
-  if (!accessToken) redirect("/");
+  if (!accessToken) redirect("/api/auth/logout");
 
   const cookieStore = await cookies();
   const tz = decodeURIComponent(cookieStore.get("sonaara_tz")?.value ?? "UTC");
