@@ -1,12 +1,10 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { Redis } from "@upstash/redis";
 import type { Track, Signature } from "@/types";
 
-// NOTE: File-based store for local development only.
-// Replace with a real database before deploying — this store is not safe
-// for concurrent writes and will not persist on serverless platforms.
-
-const STORE_PATH = path.join(process.cwd(), "data", "users.json");
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 const VALID_DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -18,22 +16,6 @@ export interface UserRecord {
   signature: Signature | null;
   lastTrack: Track | null;
   signatureHistory: Record<string, Signature | null>; // "YYYY-MM-DD" → Signature
-}
-
-type Store = Record<string, UserRecord>;
-
-async function readStore(): Promise<Store> {
-  try {
-    const raw = await fs.readFile(STORE_PATH, "utf-8");
-    return JSON.parse(raw) as Store;
-  } catch {
-    return {};
-  }
-}
-
-async function writeStore(store: Store): Promise<void> {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-  await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf-8");
 }
 
 function cleanHistory(
@@ -52,8 +34,8 @@ function cleanHistory(
 }
 
 export async function getUser(userId: string): Promise<UserRecord | null> {
-  const store = await readStore();
-  return store[userId] ?? null;
+  const record = await redis.get<UserRecord>(`user:${userId}`);
+  return record ?? null;
 }
 
 /**
@@ -64,20 +46,24 @@ export async function upsertUser(
   record: Omit<UserRecord, "signatureHistory">,
   historyUpdates: Record<string, Signature | null>
 ): Promise<void> {
-  const store = await readStore();
-  const existing = store[record.userId];
+  const existing = await redis.get<UserRecord>(`user:${record.userId}`);
 
   const merged: Record<string, Signature | null> = {
     ...(existing?.signatureHistory ?? {}),
     ...historyUpdates,
   };
 
-  store[record.userId] = { ...record, signatureHistory: cleanHistory(merged) };
-  await writeStore(store);
+  const newRecord: UserRecord = {
+    ...record,
+    signatureHistory: cleanHistory(merged),
+  };
+
+  await redis.set(`user:${record.userId}`, newRecord);
 }
 
 export async function getUsers(userIds: string[]): Promise<UserRecord[]> {
   if (!userIds.length) return [];
-  const store = await readStore();
-  return userIds.flatMap((id) => (store[id] ? [store[id]] : []));
+  const keys = userIds.map((id) => `user:${id}`);
+  const records = await redis.mget<UserRecord[]>(...keys);
+  return records.filter((r): r is UserRecord => r !== null);
 }

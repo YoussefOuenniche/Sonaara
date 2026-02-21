@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@upstash/redis": "^1.36.2",
     "iron-session": "^8.0.4",
     "next": "16.1.6",
     "react": "19.2.3",
