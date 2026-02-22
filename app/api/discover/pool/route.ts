@@ -1,17 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
-import { getUser, getUsers, getFriendIds } from "@/lib/store";
+import { getSession, getAccessToken } from "@/lib/session";
+import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
+import { getLikedTracks } from "@/lib/spotify";
 import type { DiscoverTrack } from "@/types";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session.userId) return NextResponse.json({ tracks: [] });
 
+  const accessToken = await getAccessToken();
+  if (!accessToken) return NextResponse.json({ tracks: [] });
+
   const genre = request.nextUrl.searchParams.get("genre") ?? "";
 
   const currentUser = await getUser(session.userId);
-  const myLikedIds = new Set((currentUser?.likedTracks ?? []).map((t) => t.id));
   const mySkipped = new Set(currentUser?.skippedTrackIds ?? []);
+
+  // Resolve current user's liked tracks — fetch from Spotify if cache is cold
+  let myLikedTracks = currentUser?.likedTracks ?? [];
+  if (myLikedTracks.length === 0) {
+    myLikedTracks = await getLikedTracks(accessToken).catch(() => []);
+    if (myLikedTracks.length > 0 && currentUser) {
+      // Warm the cache so future calls are fast
+      await setLikedTracks(session.userId, myLikedTracks).catch(() => {});
+    }
+  }
+
+  const myLikedIds = new Set(myLikedTracks.map((t) => t.id));
 
   // Name map for resolving display names
   const nameMap = new Map<string, string>();
@@ -45,10 +60,10 @@ export async function GET(request: NextRequest) {
 
   let pool = Array.from(poolMap.values());
 
-  // Fallback: if pool is empty, seed with the current user's own liked tracks
-  if (pool.length === 0 && (currentUser?.likedTracks ?? []).length > 0) {
-    const myName = currentUser!.userName ?? "you";
-    pool = (currentUser!.likedTracks ?? [])
+  // Fallback: seed with the current user's own liked tracks
+  if (pool.length === 0 && myLikedTracks.length > 0) {
+    const myName = currentUser?.userName ?? "you";
+    pool = myLikedTracks
       .filter((t) => !mySkipped.has(t.id))
       .map((track) => ({
         ...track,

@@ -140,12 +140,14 @@ export function DiscoverView({
               className="rounded-2xl p-6 backdrop-blur-sm"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
             >
-              {/* Genre dropdown — hero element */}
+              <p className="text-white text-xl font-semibold mb-4">Recommend me</p>
+
+              {/* Genre dropdown */}
               <div className="relative mb-5">
                 <select
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
-                  className="appearance-none w-full bg-white/8 hover:bg-white/12 transition-colors text-white text-2xl font-semibold rounded-xl pl-4 pr-10 py-3 cursor-pointer outline-none"
+                  className="appearance-none w-full text-white text-lg font-medium rounded-xl pl-4 pr-10 py-3 cursor-pointer outline-none transition-colors"
                   style={{ WebkitAppearance: "none", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
                   {GENRES.map((g) => (
@@ -157,17 +159,13 @@ export function DiscoverView({
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40 text-sm">▾</span>
               </div>
 
-              {/* Action row */}
-              <div className="flex items-center justify-between">
-                <span className="text-white/50 text-sm">Recommend me</span>
-                <button
-                  onClick={handleSubmit}
-                  className="px-5 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.97] hover:opacity-90"
-                  style={{ background: "rgba(196,168,240,0.18)", color: "rgba(196,168,240,0.9)" }}
-                >
-                  → Go
-                </button>
-              </div>
+              <button
+                onClick={handleSubmit}
+                className="w-full py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.97] hover:opacity-90"
+                style={{ background: "rgba(196,168,240,0.18)", color: "rgba(196,168,240,0.9)" }}
+              >
+                → Go
+              </button>
             </div>
 
             <p className="text-white/20 text-xs text-center mt-4">
