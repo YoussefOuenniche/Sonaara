@@ -207,22 +207,18 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
   );
 }
 
-/** Returns the YYYY-MM-DD key for N days ago in UTC. */
-function utcDayKey(daysAgo: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-}
-
 /**
- * Pick the most relevant signature for display.
- * Prefers signatureHistory[yesterday] (kept fresh by the daily cron)
- * over the raw `signature` field (only updated when the user opens the app).
+ * Return the most recent non-null signature from signatureHistory.
+ * Sorting by date key descending is timezone-agnostic: it picks whatever
+ * the latest day the user actually generated a signature was, regardless
+ * of which timezone their dashboard used when writing the key.
+ * Falls back to the raw `signature` field for users with no history yet.
  */
 function resolveSignature(data: UserRecord): import("@/types").Signature | null {
   const history = data.signatureHistory ?? {};
-  const key = utcDayKey(1);
-  if (key in history) return history[key];
+  for (const key of Object.keys(history).sort().reverse()) {
+    if (history[key] !== null) return history[key];
+  }
   return data.signature ?? null;
 }
 
