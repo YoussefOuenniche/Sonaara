@@ -163,80 +163,85 @@ function FriendCard({
 }) {
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse">
-        <div className="h-4 bg-white/10 rounded w-1/3 mb-3" />
-        <div className="h-12 bg-white/5 rounded" />
+      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 animate-pulse">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex-shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 bg-white/10 rounded w-1/3" />
+            <div className="h-2.5 bg-white/5 rounded w-1/2" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between">
-        <div>
-          <p className="text-white/40 text-sm font-mono">{userId}</p>
+      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/20 text-xs flex-shrink-0">?</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white/40 text-sm font-mono truncate">{userId}</p>
           <p className="text-white/20 text-xs mt-0.5">Hasn&apos;t opened Sonaara yet</p>
         </div>
-        <button onClick={onRemove} className="text-white/20 hover:text-white/50 text-xs transition-colors">
-          Remove
-        </button>
+        <button onClick={onRemove} className="text-white/15 hover:text-white/40 transition-colors text-xs flex-shrink-0">✕</button>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3 space-y-2">
-      {/* Row 1: avatar + name + emojis + remove */}
-      <div className="flex items-center gap-2.5">
+    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3 flex items-center gap-3">
+      {/* Avatar */}
+      <div className="relative w-8 h-8 flex-shrink-0">
         {data.userImage ? (
-          <div className="relative w-6 h-6 flex-shrink-0">
-            <Image
-              src={data.userImage}
-              alt={data.userName}
-              fill
-              className="rounded-full object-cover"
-              sizes="24px"
-            />
-          </div>
+          <Image
+            src={data.userImage}
+            alt={data.userName}
+            fill
+            className="rounded-full object-cover"
+            sizes="32px"
+          />
         ) : (
-          <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60 flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm text-white/50">
             {data.userName[0]?.toUpperCase() ?? "?"}
           </div>
         )}
-        <span className="text-white/80 text-sm font-medium flex-1 truncate">{data.userName}</span>
-        {data.signature ? (
-          <span className="text-xl leading-none select-none tracking-wide">
-            {data.signature.genre}{data.signature.mood}{data.signature.theme}
-          </span>
-        ) : (
-          <span className="text-white/20 text-xs">no signature</span>
-        )}
-        <button onClick={onRemove} className="text-white/15 hover:text-white/40 text-xs transition-colors ml-1">
-          ✕
-        </button>
       </div>
 
-      {/* Row 2: latest song */}
-      {data.lastTrack && (
-        <div className="flex items-center gap-2 pl-8">
-          {data.lastTrack.albumImageUrl && (
-            <div className="relative w-5 h-5 flex-shrink-0">
-              <Image
-                src={data.lastTrack.albumImageUrl}
-                alt={data.lastTrack.albumName}
-                fill
-                className="rounded object-cover"
-                sizes="20px"
-              />
-            </div>
+      {/* Center: name + track */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-white text-sm font-medium truncate">{data.userName}</span>
+          {data.signature && (
+            <span className="text-sm leading-none select-none flex-shrink-0">
+              {data.signature.genre} {data.signature.mood} {data.signature.theme}
+            </span>
           )}
-          <p className="text-white/30 text-xs truncate">
-            <span className="text-white/20">latest: </span>
-            {data.lastTrack.name}
-            <span className="text-white/15"> · {data.lastTrack.artists.join(", ")}</span>
-          </p>
         </div>
-      )}
+        {data.lastTrack ? (
+          <div className="flex items-center gap-1.5 mt-1">
+            {data.lastTrack.albumImageUrl && (
+              <div className="relative w-3.5 h-3.5 flex-shrink-0">
+                <Image
+                  src={data.lastTrack.albumImageUrl}
+                  alt={data.lastTrack.albumName}
+                  fill
+                  className="rounded-sm object-cover"
+                  sizes="14px"
+                />
+              </div>
+            )}
+            <p className="text-white/35 text-xs truncate">
+              {data.lastTrack.name}
+              <span className="text-white/20"> · {data.lastTrack.artists[0]}</span>
+            </p>
+          </div>
+        ) : (
+          <p className="text-white/20 text-xs mt-0.5">No recent track</p>
+        )}
+      </div>
+
+      {/* Remove */}
+      <button onClick={onRemove} className="text-white/15 hover:text-white/40 transition-colors text-xs flex-shrink-0">✕</button>
     </div>
   );
 }
