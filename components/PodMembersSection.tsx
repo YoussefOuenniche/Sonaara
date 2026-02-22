@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Pod } from "@/types";
 import type { UserRecord } from "@/lib/store";
@@ -80,11 +80,21 @@ export function PodMembersSection({
   const [approving, setApproving] = useState(false);
   const [approveMsg, setApproveMsg] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pendingEmails, setPendingEmails] = useState<string[] | null>(null);
 
   const joinLink =
     typeof window !== "undefined"
       ? `${window.location.origin}/join/${pod.podId}`
       : `/join/${pod.podId}`;
+
+  // Fetch pending emails on mount (admin only)
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch(`/api/pods/${pod.podId}/pending`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.emails) setPendingEmails(data.emails); })
+      .catch(() => {});
+  }, [isAdmin, pod.podId]);
 
   function copyJoinLink() {
     navigator.clipboard.writeText(joinLink);
@@ -105,6 +115,7 @@ export function PodMembersSection({
           ? `Adding ${data.emailsQueued} member${data.emailsQueued > 1 ? "s" : ""}…`
           : "No pending requests."
       );
+      setPendingEmails([]);
     } else {
       setApproveMsg("Failed to trigger approval.");
     }
@@ -148,20 +159,53 @@ export function PodMembersSection({
         </div>
       )}
 
-      {/* Admin: approve pending members */}
+      {/* Admin: pending requests + approve */}
       {isAdmin && (
         <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(196,168,240,0.08)" }}>
-          <p className="text-xs mb-3" style={{ color: "var(--lilac)", opacity: 0.4 }}>
-            Approve pending join requests — triggers allowlist update on Spotify.
-          </p>
-          <button
-            onClick={handleApprove}
-            disabled={approving}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] hover:opacity-90 disabled:opacity-40"
-            style={{ background: "rgba(196,168,240,0.15)", color: "rgba(196,168,240,0.9)" }}
-          >
-            {approving ? "Processing…" : "Approve pending members"}
-          </button>
+
+          {/* Pending list */}
+          {pendingEmails && pendingEmails.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs mb-2" style={{ color: "var(--lilac)", opacity: 0.5 }}>
+                {pendingEmails.length} pending request{pendingEmails.length > 1 ? "s" : ""}
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {pendingEmails.map((email) => (
+                  <div
+                    key={email}
+                    className="rounded-xl px-3 py-2 flex items-center gap-2"
+                    style={{ background: "rgba(196,168,240,0.06)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background: "rgba(196,168,240,0.4)" }}
+                    />
+                    <p className="text-xs truncate" style={{ color: "rgba(196,168,240,0.7)" }}>
+                      {email}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {pendingEmails !== null && pendingEmails.length === 0 && !approveMsg && (
+            <p className="text-xs mb-3" style={{ color: "var(--lilac)", opacity: 0.3 }}>
+              No pending requests.
+            </p>
+          )}
+
+          {(pendingEmails === null || pendingEmails.length > 0) && (
+            <button
+              onClick={handleApprove}
+              disabled={approving || pendingEmails?.length === 0}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] hover:opacity-90 disabled:opacity-40"
+              style={{ background: "rgba(196,168,240,0.15)", color: "rgba(196,168,240,0.9)" }}
+            >
+              {approving ? "Processing…" : `Approve ${pendingEmails?.length ? `${pendingEmails.length} ` : ""}request${pendingEmails?.length !== 1 ? "s" : ""}`}
+            </button>
+          )}
+
           {approveMsg && (
             <p className="text-xs mt-2 text-center" style={{ color: "rgba(196,168,240,0.5)" }}>
               {approveMsg}
