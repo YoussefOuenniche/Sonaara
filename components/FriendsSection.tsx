@@ -207,6 +207,25 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
   );
 }
 
+/** Returns the YYYY-MM-DD key for N days ago in UTC. */
+function utcDayKey(daysAgo: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - daysAgo);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Pick the most relevant signature for display.
+ * Prefers signatureHistory[yesterday] (kept fresh by the daily cron)
+ * over the raw `signature` field (only updated when the user opens the app).
+ */
+function resolveSignature(data: UserRecord): import("@/types").Signature | null {
+  const history = data.signatureHistory ?? {};
+  const key = utcDayKey(1);
+  if (key in history) return history[key];
+  return data.signature ?? null;
+}
+
 function FriendCard({
   userId,
   data,
@@ -236,6 +255,8 @@ function FriendCard({
     );
   }
 
+  const sig = resolveSignature(data);
+
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
       <div className="flex items-center gap-3">
@@ -261,11 +282,11 @@ function FriendCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-white text-[15px] font-semibold truncate">{data.userName}</span>
-            {data.signature ? (
+            {sig ? (
               <span className="flex gap-1 bg-white/8 rounded-lg px-2 py-0.5 flex-shrink-0">
-                <span className="text-lg leading-none select-none">{data.signature.genre}</span>
-                <span className="text-lg leading-none select-none">{data.signature.mood}</span>
-                <span className="text-lg leading-none select-none">{data.signature.theme}</span>
+                <span className="text-lg leading-none select-none">{sig.genre}</span>
+                <span className="text-lg leading-none select-none">{sig.mood}</span>
+                <span className="text-lg leading-none select-none">{sig.theme}</span>
               </span>
             ) : (
               <span className="text-white/20 text-xs">no signature yet</span>
