@@ -50,7 +50,7 @@ export function DiscoverView({
   const [liking, setLiking] = useState(false);
   const [done, setDone] = useState(false);
 
-  const { state: playerState, playTrack, togglePlay } = useSpotifyPlayer(accessToken);
+  const { state: playerState, playTrack, togglePlay, activateElement } = useSpotifyPlayer(accessToken);
 
   const fetchPool = useCallback(async (g: string) => {
     setLoading(true);
@@ -78,9 +78,12 @@ export function DiscoverView({
       setBgIndex(Math.floor(Math.random() * NATURE_BGS.length));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, playerState.isReady]);
+  }, [current?.id, playerState.isReady]);
 
   function handleSubmit() {
+    // activateElement must be called synchronously inside a user-gesture handler
+    // to unlock the browser's AudioContext before the async pool fetch
+    activateElement();
     setPhase("cards");
     fetchPool(genre);
   }

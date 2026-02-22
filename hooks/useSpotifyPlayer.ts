@@ -21,6 +21,7 @@ interface SpotifyPlayer {
   togglePlay: () => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
+  activateElement: () => Promise<void>;
   addListener: (event: string, cb: (data: unknown) => void) => void;
   removeListener: (event: string) => void;
 }
@@ -129,9 +130,14 @@ export function useSpotifyPlayer(accessToken: string | null) {
     setState((s) => ({ ...s, isPlaying: true, error: null }));
   }
 
+  async function activateElement() {
+    await playerRef.current?.activateElement();
+  }
+
   async function togglePlay() {
+    await playerRef.current?.activateElement();
     await playerRef.current?.togglePlay();
   }
 
-  return { state, playTrack, togglePlay };
+  return { state, playTrack, togglePlay, activateElement };
 }
