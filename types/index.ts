@@ -50,3 +50,17 @@ export interface AggregatedAudioFeatures {
   avgAcousticness: number;
   avgTempo: number;
 }
+
+export interface Pod {
+  podId: string;
+  podName: string;
+  adminUserId: string;
+  clientId: string;
+  clientSecretEncrypted: string;   // AES-256-GCM encrypted
+  spotifyAppId: string;
+  sessionCookiesEncrypted: string; // AES-256-GCM encrypted JSON (Playwright storage state)
+  memberIds: string[];
+  status: "pending" | "ready" | "error";
+  errorMessage?: string;
+  createdAt: string;                // ISO string
+}

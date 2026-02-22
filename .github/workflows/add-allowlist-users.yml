@@ -1,0 +1,44 @@
+name: Add Users to Spotify App Allowlist
+
+on:
+  workflow_dispatch:
+    inputs:
+      podId:
+        description: "Pod ID"
+        required: true
+        type: string
+      emails:
+        description: "Comma-separated list of Spotify emails to add"
+        required: true
+        type: string
+      webhookUrl:
+        description: "Base URL for webhook + session-cookies endpoint"
+        required: false
+        type: string
+        default: "https://sonaara.vercel.app"
+
+jobs:
+  add-users:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        run: |
+          npm install @playwright/test
+          npx playwright install chromium --with-deps
+
+      - name: Run allowlist script
+        run: node scripts/playwright/add-allowlist-users.js
+        env:
+          POD_ID: ${{ inputs.podId }}
+          EMAILS: ${{ inputs.emails }}
+          WEBHOOK_URL: ${{ inputs.webhookUrl }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}

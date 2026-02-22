@@ -8,6 +8,7 @@ export interface SessionData {
   userName?: string;
   userImage?: string;
   userId?: string;
+  podId?: string;     // set when user authenticated via a pod's Spotify app
 }
 
 export const sessionOptions = {
@@ -42,14 +43,27 @@ async function refreshToken(session: IronSession<SessionData>): Promise<string |
   if (!session.refreshToken) return null;
 
   try {
+    // Use pod credentials if the user authenticated via a pod
+    let clientId = process.env.SPOTIFY_CLIENT_ID!;
+    let clientSecret = process.env.SPOTIFY_CLIENT_SECRET!;
+    if (session.podId) {
+      const { getPod } = await import("@/lib/pods");
+      const { decrypt } = await import("@/lib/encryption");
+      const pod = await getPod(session.podId).catch(() => null);
+      if (pod?.status === "ready") {
+        clientId = pod.clientId;
+        clientSecret = decrypt(pod.clientSecretEncrypted);
+      }
+    }
+
     const res = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: session.refreshToken,
-        client_id: process.env.SPOTIFY_CLIENT_ID!,
-        client_secret: process.env.SPOTIFY_CLIENT_SECRET!,
+        client_id: clientId,
+        client_secret: clientSecret,
       }),
     });
 

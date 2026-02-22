@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { addToUserIndex, storeUserRefreshToken } from "@/lib/store";
+import { getPod, addPodMember } from "@/lib/pods";
+import { decrypt } from "@/lib/encryption";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -11,6 +13,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/?error=access_denied", request.url));
   }
 
+  // Decode podId from the state param (set by /api/auth/login)
+  const state = searchParams.get("state") ?? "";
+  const podId = state.startsWith("pod:") ? state.slice(4) : null;
+
+  // Resolve credentials: pod credentials if pod login, else default app credentials
+  let clientId = process.env.SPOTIFY_CLIENT_ID!;
+  let clientSecret = process.env.SPOTIFY_CLIENT_SECRET!;
+  let pod = null;
+
+  if (podId) {
+    pod = await getPod(podId).catch(() => null);
+    if (pod?.status === "ready") {
+      clientId = pod.clientId;
+      clientSecret = decrypt(pod.clientSecretEncrypted);
+    }
+  }
+
   // Exchange code for tokens
   const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -19,8 +38,8 @@ export async function GET(request: NextRequest) {
       grant_type: "authorization_code",
       code,
       redirect_uri: process.env.SPOTIFY_REDIRECT_URI!,
-      client_id: process.env.SPOTIFY_CLIENT_ID!,
-      client_secret: process.env.SPOTIFY_CLIENT_SECRET!,
+      client_id: clientId,
+      client_secret: clientSecret,
     }),
   });
 
@@ -44,6 +63,7 @@ export async function GET(request: NextRequest) {
   session.userId = profile.id ?? null;
   session.userName = profile.display_name ?? profile.id ?? "there";
   session.userImage = profile.images?.[0]?.url ?? null;
+  if (podId && pod) session.podId = podId;
   await session.save();
 
   // Persist refresh token + add user to global index so the daily cron can reach them
@@ -52,6 +72,11 @@ export async function GET(request: NextRequest) {
       addToUserIndex(profile.id),
       storeUserRefreshToken(profile.id, tokens.refresh_token),
     ]).catch(() => {});
+  }
+
+  // Add user to pod member list
+  if (podId && pod && profile.id) {
+    await addPodMember(podId, profile.id).catch(() => {});
   }
 
   // Use meta-refresh so the Set-Cookie header lands on this response
