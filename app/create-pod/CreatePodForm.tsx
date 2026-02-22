@@ -4,11 +4,9 @@ import { useState, useEffect } from "react";
 
 type Status = "idle" | "submitting" | "polling" | "ready" | "error";
 
-export function CreatePodForm() {
+export function CreatePodForm({ userEmail }: { userEmail: string }) {
   const [podName, setPodName] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [twoFactor, setTwoFactor] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [podId, setPodId] = useState<string | null>(null);
   const [joinLink, setJoinLink] = useState<string | null>(null);
@@ -43,7 +41,7 @@ export function CreatePodForm() {
     const res = await fetch("/api/pods/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ podName, email, password, twoFactorCode: twoFactor || undefined }),
+      body: JSON.stringify({ podName, password }),
     }).catch(() => null);
 
     if (!res?.ok) {
@@ -130,21 +128,20 @@ export function CreatePodForm() {
         />
       </div>
 
-      <div>
-        <label className="text-white/40 text-xs uppercase tracking-wide mb-1.5 block">Spotify developer email</label>
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full rounded-xl px-4 py-3 text-sm outline-none placeholder:text-white/20"
-          style={inputStyle}
-        />
-      </div>
+      {userEmail && (
+        <div>
+          <label className="text-white/40 text-xs uppercase tracking-wide mb-1.5 block">Spotify account</label>
+          <div
+            className="w-full rounded-xl px-4 py-3 text-sm"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
+          >
+            {userEmail}
+          </div>
+        </div>
+      )}
 
       <div>
-        <label className="text-white/40 text-xs uppercase tracking-wide mb-1.5 block">Password</label>
+        <label className="text-white/40 text-xs uppercase tracking-wide mb-1.5 block">Spotify password</label>
         <input
           type="password"
           placeholder="••••••••"
@@ -153,22 +150,6 @@ export function CreatePodForm() {
           required
           className="w-full rounded-xl px-4 py-3 text-sm outline-none placeholder:text-white/20"
           style={inputStyle}
-        />
-      </div>
-
-      <div>
-        <label className="text-white/40 text-xs uppercase tracking-wide mb-1.5 block">
-          2FA code <span className="text-white/20 normal-case">(optional)</span>
-        </label>
-        <input
-          type="text"
-          placeholder="123456"
-          value={twoFactor}
-          onChange={(e) => setTwoFactor(e.target.value)}
-          className="w-full rounded-xl px-4 py-3 text-sm outline-none placeholder:text-white/20"
-          style={inputStyle}
-          maxLength={8}
-          autoComplete="one-time-code"
         />
       </div>
 
@@ -186,7 +167,7 @@ export function CreatePodForm() {
       </button>
 
       <p className="text-white/15 text-xs text-center">
-        Your credentials are used once to create the Spotify app and are never stored in plain text.
+        Your password is used once to create the Spotify app and is never stored.
       </p>
     </form>
   );

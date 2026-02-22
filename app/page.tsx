@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { LoginButton } from "@/components/LoginButton";
 import { VinylLogo } from "@/components/VinylLogo";
+import { JoinPodInput } from "@/components/JoinPodInput";
 
 export default async function HomePage() {
   const session = await getSession();
@@ -25,7 +25,7 @@ export default async function HomePage() {
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center gap-8 text-center max-w-sm">
+      <div className="relative z-10 flex flex-col items-center gap-10 text-center max-w-sm w-full">
         {/* Vinyl logo + wordmark */}
         <div className="flex flex-col items-center gap-5">
           <VinylLogo size={96} />
@@ -42,7 +42,28 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <LoginButton />
+        {/* CTAs */}
+        <div className="flex flex-col gap-3 w-full">
+          <a
+            href="/create-pod"
+            className="w-full py-4 rounded-2xl text-sm font-semibold tracking-wide text-center transition-all hover:opacity-90 active:scale-[0.97]"
+            style={{
+              background: "rgba(196,168,240,0.15)",
+              color: "rgba(196,168,240,1)",
+              border: "1px solid rgba(196,168,240,0.2)",
+            }}
+          >
+            Create a pod
+          </a>
+
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+            <span className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>or</span>
+            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+          </div>
+
+          <JoinPodInput />
+        </div>
       </div>
     </div>
   );

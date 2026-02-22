@@ -5,7 +5,6 @@ const POD_ID = process.env.POD_ID;
 const POD_NAME = process.env.POD_NAME;
 const EMAIL = process.env.EMAIL;
 const PASSWORD = process.env.PASSWORD;
-const TWO_FACTOR_CODE = process.env.TWO_FACTOR_CODE || "";
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
@@ -49,15 +48,6 @@ async function postWebhook(body) {
     await page.fill("#login-username, input[name='username']", EMAIL);
     await page.fill("#login-password, input[name='password']", PASSWORD);
     await page.click("#login-button, button[type='submit']");
-
-    // Handle 2FA if presented
-    if (TWO_FACTOR_CODE) {
-      const tfaInput = page.locator('input[name="code"], input[aria-label*="code" i]').first();
-      if (await tfaInput.isVisible({ timeout: 8000 }).catch(() => false)) {
-        await tfaInput.fill(TWO_FACTOR_CODE);
-        await page.click('button[type="submit"]');
-      }
-    }
 
     // Wait for dashboard
     await page.waitForURL("**/dashboard**", { timeout: 20000 });

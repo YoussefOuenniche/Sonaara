@@ -8,6 +8,7 @@ export interface SessionData {
   userName?: string;
   userImage?: string;
   userId?: string;
+  userEmail?: string;
   podId?: string;     // set when user authenticated via a pod's Spotify app
 }
 

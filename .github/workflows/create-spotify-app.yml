@@ -12,18 +12,13 @@ on:
         required: true
         type: string
       email:
-        description: "Spotify developer account email"
+        description: "Spotify account email"
         required: true
         type: string
       password:
-        description: "Spotify developer account password"
+        description: "Spotify account password"
         required: true
         type: string
-      twoFactorCode:
-        description: "2FA code (leave blank if not enabled)"
-        required: false
-        type: string
-        default: ""
       webhookUrl:
         description: "Base URL to POST results back to (default: production)"
         required: false
@@ -55,6 +50,5 @@ jobs:
           POD_NAME: ${{ inputs.podName }}
           EMAIL: ${{ inputs.email }}
           PASSWORD: ${{ inputs.password }}
-          TWO_FACTOR_CODE: ${{ inputs.twoFactorCode }}
           WEBHOOK_URL: ${{ inputs.webhookUrl }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}

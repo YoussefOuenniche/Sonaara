@@ -4,7 +4,7 @@ import { CreatePodForm } from "./CreatePodForm";
 
 export default async function CreatePodPage() {
   const session = await getSession();
-  if (!session.accessToken) redirect("/");
+  if (!session.accessToken) redirect("/api/auth/login");
   if (session.podId) redirect("/dashboard"); // already in a pod
 
   return (
@@ -22,7 +22,7 @@ export default async function CreatePodPage() {
             Your friend group gets its own Spotify app and shared discovery feed.
           </p>
         </div>
-        <CreatePodForm />
+        <CreatePodForm userEmail={session.userEmail ?? ""} />
       </div>
     </div>
   );

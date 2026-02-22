@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
   session.userId = profile.id ?? null;
   session.userName = profile.display_name ?? profile.id ?? "there";
   session.userImage = profile.images?.[0]?.url ?? null;
+  session.userEmail = profile.email ?? null;
   if (podId && pod) session.podId = podId;
   await session.save();
 

@@ -49,14 +49,13 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json() as {
     podName: string;
-    email: string;
     password: string;
-    twoFactorCode?: string;
   };
 
-  const { podName, email, password, twoFactorCode } = body;
-  if (!podName?.trim() || !email?.trim() || !password) {
-    return NextResponse.json({ error: "podName, email, and password are required" }, { status: 400 });
+  const { podName, password } = body;
+  const email = session.userEmail ?? "";
+  if (!podName?.trim() || !email || !password) {
+    return NextResponse.json({ error: "podName and password are required" }, { status: 400 });
   }
 
   const podId = nanoid(8);
@@ -81,7 +80,6 @@ export async function POST(request: NextRequest) {
     podName: podName.trim(),
     email,
     password,
-    twoFactorCode: twoFactorCode ?? "",
   });
 
   return NextResponse.json({ podId, status: "pending" });
