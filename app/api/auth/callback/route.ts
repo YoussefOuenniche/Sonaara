@@ -82,17 +82,28 @@ export async function GET(request: NextRequest) {
     await addPodMember(podId, profile.id).catch(() => {});
   }
 
-  // Join intent: auto-add email to pending list, redirect back to join page
-  if (joinPodId && profile.email) {
-    await Promise.all([
-      addPendingEmail(joinPodId, profile.email.toLowerCase()),
-      storeJoinEmailUserId(joinPodId, profile.email.toLowerCase(), profile.id),
-    ]).catch(() => {});
+  // Join intent: if already a pod member log them in directly, otherwise add to pending
+  let joinDestination: string | null = null;
+  if (joinPodId && profile.email && profile.id) {
+    const joinPod = await getPod(joinPodId).catch(() => null);
+    if (joinPod?.memberIds.includes(profile.id)) {
+      // Already approved — set podId in session and send to dashboard
+      session.podId = joinPodId;
+      await session.save();
+      joinDestination = "/dashboard";
+    } else {
+      // Not yet approved — add to pending list
+      await Promise.all([
+        addPendingEmail(joinPodId, profile.email.toLowerCase()),
+        storeJoinEmailUserId(joinPodId, profile.email.toLowerCase(), profile.id),
+      ]).catch(() => {});
+      joinDestination = `/join/${joinPodId}?pending=1`;
+    }
   }
 
   // Use meta-refresh so the Set-Cookie header lands on this response
   // before the browser navigates — a plain redirect loses the cookie.
-  const destination = nextPath ? `/${nextPath}` : joinPodId ? `/join/${joinPodId}?pending=1` : "/dashboard";
+  const destination = nextPath ? `/${nextPath}` : joinDestination ?? "/dashboard";
   return new NextResponse(
     `<!doctype html><html><head>
       <meta http-equiv="refresh" content="0; url=${destination}">

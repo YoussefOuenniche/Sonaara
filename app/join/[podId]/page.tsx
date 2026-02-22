@@ -19,7 +19,7 @@ export default async function JoinPodPage({
   const session = await getSession();
   const isFull = pod.memberIds.length >= POD_MAX_MEMBERS;
   const isPending = pending === "1";
-  const userEmail = session.userEmail ?? null;
+  const isMember = !!(session.userId && pod.memberIds.includes(session.userId));
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6" style={{ backgroundColor: "var(--background)" }}>
@@ -34,7 +34,7 @@ export default async function JoinPodPage({
           </h1>
           <p className="text-white/35 text-sm mt-2">You&apos;ve been invited to join this pod.</p>
         </div>
-        <JoinForm podId={podId} podName={pod.podName} isFull={isFull} isPending={isPending} userEmail={userEmail} />
+        <JoinForm podId={podId} podName={pod.podName} isFull={isFull} isPending={isPending} isMember={isMember} />
       </div>
     </div>
   );
