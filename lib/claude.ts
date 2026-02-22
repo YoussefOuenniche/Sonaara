@@ -39,10 +39,19 @@ Dominant genres: ${dominantGenres.length ? dominantGenres.join(", ") : "unknown"
 
 ${audioSection}
 
-Based on this data, generate a 3-emoji "Signature" that captures the essence of their listening day:
-1. GENRE emoji: A single emoji that best symbolizes the dominant musical genre (e.g. 🎺 for jazz, 🤠 for country, 🎸 for rock, 🌴 for reggaeton)
-2. MOOD emoji: A single emoji that best represents the emotional mood/vibe (use the audio features as your primary guide — valence for happiness, energy for intensity, danceability for movement)
-3. THEME emoji: A creative single emoji that represents the most interesting/common theme found in the song titles themselves (look for recurring words, imagery, or concepts across the titles)
+Generate a 3-emoji "Signature" that is SPECIFIC to this person's actual listening — not generic defaults.
+
+RULES (follow strictly):
+- Every emoji must be directly justified by the data above. If you cannot justify it, pick something else.
+- The 3 emojis must be visually and conceptually DISTINCT from each other — no overlapping vibes.
+- NEVER use these overused defaults unless the data strongly demands it: 🌙 🎵 🎶 🎤 🎧 ⭐ ✨ 💫
+- If audio profile is unavailable, derive mood entirely from the energy/tone implied by the track titles and artists.
+
+1. GENRE emoji: Represents the dominant musical genre. Be specific — not just "music" but the actual genre character. Examples: 🎺 jazz, 🤠 country, 🎸 rock, 🌴 reggaeton, 🏙️ hip-hop, 🎹 classical/piano, 🪕 folk/americana, 🎻 strings/orchestral, 🔊 electronic/club.
+
+2. MOOD emoji: Represents the emotional energy of the session. Use audio features if available; otherwise read the mood from the artists and titles themselves. Examples: 🔥 high energy, 💔 heartbreak, 😤 defiant, 🥲 bittersweet, 😤 aggressive, 🌊 flowing/calm, 💃 euphoric, 😮‍💨 introspective. Avoid 🌙 unless the titles/artists genuinely evoke nighttime.
+
+3. THEME emoji: The most interesting recurring concept, image, or feeling found in the song TITLES specifically — not the genre or mood again. Read the actual words. Examples: if many songs mention love → 💌, roads/travel → 🛣️, money → 💸, fighting → 🥊, nature → 🌿, city → 🏙️, nostalgia → 📼.
 
 Respond ONLY with valid JSON in exactly this format, no other text:
 {

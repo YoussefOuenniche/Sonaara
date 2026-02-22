@@ -1,4 +1,4 @@
-import type { Track, AudioFeatures, TrackWithGenres, AggregatedAudioFeatures } from "@/types";
+import type { Track, AudioFeatures, TrackWithGenres, AggregatedAudioFeatures, DiscoverTrack } from "@/types";
 
 const SPOTIFY_BASE = "https://api.spotify.com/v1";
 
@@ -195,6 +195,58 @@ export function aggregateAudioFeatures(
     avgAcousticness: sum.acousticness / count,
     avgTempo: sum.tempo / count,
   };
+}
+
+// Fetch user's liked songs (up to 200) with genre tags
+export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack[]> {
+  type RawSavedItem = {
+    track: {
+      id: string;
+      name: string;
+      uri: string;
+      artists: { id: string; name: string }[];
+      album: { name: string; images: { url: string }[] };
+    };
+  };
+
+  const raw: { artistIds: string[]; track: DiscoverTrack }[] = [];
+  let nextPath: string | null = "/me/tracks?limit=50";
+
+  while (nextPath && raw.length < 200) {
+    const data = await spotifyFetch(nextPath, accessToken).catch(() => null) as {
+      items: RawSavedItem[];
+      next: string | null;
+    } | null;
+    if (!data?.items) break;
+
+    for (const item of data.items) {
+      const t = item.track;
+      if (!t?.id) continue;
+      raw.push({
+        artistIds: t.artists.map((a) => a.id),
+        track: {
+          id: t.id,
+          name: t.name,
+          artists: t.artists.map((a) => a.name),
+          albumName: t.album?.name ?? "",
+          albumImageUrl: t.album?.images?.[0]?.url ?? "",
+          genres: [],
+          uri: t.uri,
+          likedByUserIds: [],
+        },
+      });
+    }
+    nextPath = data.next ? data.next.replace(SPOTIFY_BASE, "") : null;
+  }
+
+  // Batch-fetch genres for all unique artist IDs
+  const allArtistIds = [...new Set(raw.flatMap((r) => r.artistIds))];
+  const genreMap = await getArtistGenres(allArtistIds, accessToken).catch(() => ({} as Record<string, string[]>));
+
+  return raw.map(({ artistIds, track }) => ({
+    ...track,
+    genres: [...new Set(artistIds.flatMap((id) => genreMap[id] ?? []))],
+  }));
 }
 
 // Format relative time (e.g. "2 hours ago")

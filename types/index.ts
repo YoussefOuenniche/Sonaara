@@ -31,6 +31,17 @@ export interface Signature {
   themeLabel: string;
 }
 
+export interface DiscoverTrack {
+  id: string;
+  name: string;
+  artists: string[];
+  albumName: string;
+  albumImageUrl: string;
+  genres: string[];
+  uri: string; // spotify:track:...
+  likedByUserIds: string[]; // which friends liked this
+}
+
 export interface AggregatedAudioFeatures {
   avgValence: number;
   avgEnergy: number;

@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-const SCOPES = "user-read-recently-played user-read-email user-read-private";
+const SCOPES = [
+  "user-read-recently-played",
+  "user-read-email",
+  "user-read-private",
+  "user-library-read",
+  "user-library-modify",
+  "streaming",
+].join(" ");
 
 export async function GET() {
   const params = new URLSearchParams({

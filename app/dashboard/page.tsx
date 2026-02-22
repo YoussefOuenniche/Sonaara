@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getSession, getAccessToken } from "@/lib/session";
-import { upsertUser, getUser } from "@/lib/store";
+import { upsertUser, getUser, setLikedTracks } from "@/lib/store";
 import {
   getLastPlayedTrack,
   getYesterdayTracks,
@@ -10,6 +10,7 @@ import {
   aggregateAudioFeatures,
   getRecentTracksGrouped,
   getDayKey,
+  getLikedTracks,
 } from "@/lib/spotify";
 import { generateSignature } from "@/lib/claude";
 import { LastPlayedCard } from "@/components/LastPlayedCard";
@@ -32,12 +33,13 @@ export default async function DashboardPage() {
   const userId = session.userId ?? "";
   const yesterdayKey = getDayKey(1, tz);
 
-  // Fetch in parallel: stored user, last played, yesterday's tracks, recent grouped
-  const [existingUser, lastTrack, yesterdayRawTracks, recentGrouped] = await Promise.all([
+  // Fetch in parallel: stored user, last played, yesterday's tracks, recent grouped, liked tracks
+  const [existingUser, lastTrack, yesterdayRawTracks, recentGrouped, likedTracks] = await Promise.all([
     userId ? getUser(userId) : Promise.resolve(null),
     getLastPlayedTrack(accessToken).catch(() => null),
     getYesterdayTracks(accessToken, tz).catch(() => []),
     getRecentTracksGrouped(accessToken, tz).catch(() => ({} as Record<string, Track[]>)),
+    getLikedTracks(accessToken).catch(() => []),
   ]);
 
   // Clean stored history (removes any "undefined" or malformed keys)
@@ -106,17 +108,22 @@ export default async function DashboardPage() {
 
   // Persist to store (awaited so the write completes before the response is sent)
   if (userId) {
-    await upsertUser(
-      {
-        userId,
-        userName: session.userName ?? "Unknown",
-        userImage: session.userImage ?? null,
-        updatedAt: new Date().toISOString(),
-        signature: todaySignature,
-        lastTrack,
-      },
-      fullHistory
-    ).catch(() => {});
+    await Promise.all([
+      upsertUser(
+        {
+          userId,
+          userName: session.userName ?? "Unknown",
+          userImage: session.userImage ?? null,
+          updatedAt: new Date().toISOString(),
+          signature: todaySignature,
+          lastTrack,
+        },
+        fullHistory
+      ).catch(() => {}),
+      likedTracks.length > 0
+        ? setLikedTracks(userId, likedTracks).catch(() => {})
+        : Promise.resolve(),
+    ]);
   }
 
   // History passed to SignatureCard excludes today's key (component adds it back)
@@ -152,13 +159,22 @@ export default async function DashboardPage() {
               sonaara
             </span>
           </div>
-          <a
-            href="/api/auth/logout"
-            className="text-xs transition-opacity hover:opacity-60"
-            style={{ color: "var(--lilac)", opacity: 0.35 }}
-          >
-            Sign out
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/discover"
+              className="text-xs transition-opacity hover:opacity-80"
+              style={{ color: "var(--lilac)", opacity: 0.55 }}
+            >
+              Discover
+            </a>
+            <a
+              href="/api/auth/logout"
+              className="text-xs transition-opacity hover:opacity-60"
+              style={{ color: "var(--lilac)", opacity: 0.35 }}
+            >
+              Sign out
+            </a>
+          </div>
         </div>
       </header>
 

@@ -1,0 +1,20 @@
+import { redirect } from "next/navigation";
+import { getSession, getAccessToken } from "@/lib/session";
+import { DiscoverView } from "@/components/DiscoverView";
+
+export default async function DiscoverPage() {
+  const session = await getSession();
+  if (!session.accessToken) redirect("/");
+
+  const accessToken = await getAccessToken();
+  if (!accessToken) redirect("/api/auth/logout");
+
+  const friendNames: Record<string, string> = {};
+  // Friend display names resolved client-side from cached data
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+      <DiscoverView accessToken={accessToken} friendNames={friendNames} />
+    </div>
+  );
+}

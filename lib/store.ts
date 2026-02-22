@@ -1,5 +1,5 @@
 import { Redis } from "@upstash/redis";
-import type { Track, Signature } from "@/types";
+import type { Track, Signature, DiscoverTrack } from "@/types";
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -16,6 +16,9 @@ export interface UserRecord {
   signature: Signature | null;
   lastTrack: Track | null;
   signatureHistory: Record<string, Signature | null>; // "YYYY-MM-DD" → Signature
+  friendIds?: string[]; // persisted friend list
+  likedTracks?: DiscoverTrack[]; // cached liked songs for discover pool
+  skippedTrackIds?: string[]; // tracks skipped in discover, don't show again
 }
 
 function cleanHistory(
@@ -66,4 +69,28 @@ export async function getUsers(userIds: string[]): Promise<UserRecord[]> {
   const keys = userIds.map((id) => `user:${id}`);
   const records = await redis.mget<UserRecord[]>(...keys);
   return records.filter((r): r is UserRecord => r !== null);
+}
+
+export async function getFriendIds(userId: string): Promise<string[]> {
+  const record = await redis.get<UserRecord>(`user:${userId}`);
+  return record?.friendIds ?? [];
+}
+
+export async function setFriendIds(userId: string, friendIds: string[]): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  await redis.set(`user:${userId}`, { ...existing, friendIds });
+}
+
+export async function setLikedTracks(userId: string, likedTracks: DiscoverTrack[]): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  await redis.set(`user:${userId}`, { ...existing, likedTracks });
+}
+
+export async function addSkippedTrack(userId: string, trackId: string): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  const skipped = Array.from(new Set([...(existing.skippedTrackIds ?? []), trackId]));
+  await redis.set(`user:${userId}`, { ...existing, skippedTrackIds: skipped });
 }

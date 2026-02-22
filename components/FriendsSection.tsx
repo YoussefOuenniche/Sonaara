@@ -7,17 +7,30 @@ import type { UserRecord } from "@/lib/store";
 
 const LS_KEY = "sonaara_friends";
 
-function loadFriendIds(): string[] {
+function migrateFromLocalStorage(): string[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
+    if (!raw) return [];
+    const ids = JSON.parse(raw) as string[];
+    localStorage.removeItem(LS_KEY);
+    return ids;
   } catch {
     return [];
   }
 }
 
-function saveFriendIds(ids: string[]): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(ids));
+async function loadFriendIds(): Promise<string[]> {
+  const res = await fetch("/api/friends/ids");
+  const json = await res.json() as { ids: string[] };
+  return json.ids ?? [];
+}
+
+async function saveFriendIds(ids: string[]): Promise<void> {
+  await fetch("/api/friends/ids", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
 }
 
 export function FriendsSection({ currentUserId }: { currentUserId: string }) {
@@ -31,7 +44,13 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
 
   useEffect(() => {
     setMounted(true);
-    setFriendIds(loadFriendIds());
+    loadFriendIds().then((serverIds) => {
+      // Migrate any locally stored IDs and merge them in
+      const local = migrateFromLocalStorage();
+      const merged = Array.from(new Set([...serverIds, ...local]));
+      setFriendIds(merged);
+      if (local.length > 0) saveFriendIds(merged);
+    });
   }, []);
 
   const fetchFriendData = useCallback(async (ids: string[]) => {
