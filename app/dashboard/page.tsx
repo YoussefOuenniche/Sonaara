@@ -17,6 +17,7 @@ import { LastPlayedCard } from "@/components/LastPlayedCard";
 import { SignatureCard } from "@/components/SignatureCard";
 import { FriendsSection } from "@/components/FriendsSection";
 import { VinylLogo } from "@/components/VinylLogo";
+import { BottomNav } from "@/components/BottomNav";
 import type { Signature, Track, TrackWithGenres } from "@/types";
 
 export default async function DashboardPage() {
@@ -155,30 +156,26 @@ export default async function DashboardPage() {
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <VinylLogo size={32} />
-            <span className="font-bold text-lg tracking-tight" style={{ color: "var(--foreground)" }}>
-              sonaara
-            </span>
+            <div>
+              <span className="font-bold text-lg tracking-tight block leading-none" style={{ color: "var(--foreground)" }}>
+                sonaara
+              </span>
+              <span className="text-[10px] tracking-widest uppercase" style={{ color: "var(--lilac)", opacity: 0.4 }}>
+                home
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <a
-              href="/discover"
-              className="text-xs transition-opacity hover:opacity-80"
-              style={{ color: "var(--lilac)", opacity: 0.55 }}
-            >
-              Discover
-            </a>
-            <a
-              href="/api/auth/logout"
-              className="text-xs transition-opacity hover:opacity-60"
-              style={{ color: "var(--lilac)", opacity: 0.35 }}
-            >
-              Sign out
-            </a>
-          </div>
+          <a
+            href="/api/auth/logout"
+            className="text-xs transition-opacity hover:opacity-60"
+            style={{ color: "var(--lilac)", opacity: 0.35 }}
+          >
+            Sign out
+          </a>
         </div>
       </header>
 
-      <main className="relative z-10 max-w-md mx-auto px-6 py-8 space-y-5">
+      <main className="relative z-10 max-w-md mx-auto px-6 py-8 pb-28 space-y-5">
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
             Hey, {displayName}
@@ -188,6 +185,19 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        {/* 1. My signature — first */}
+        <SignatureCard
+          latestKey={yesterdayKey}
+          latestSignature={todaySignature}
+          latestTrackCount={trackCount}
+          history={historyForCard}
+          tracksPerDay={tracksPerDay}
+        />
+
+        {/* 2. Friends' signatures */}
+        {userId && <FriendsSection currentUserId={userId} />}
+
+        {/* 3. Last played — bottom */}
         {lastTrack ? (
           <LastPlayedCard track={lastTrack} />
         ) : (
@@ -204,17 +214,9 @@ export default async function DashboardPage() {
             </p>
           </div>
         )}
-
-        <SignatureCard
-          latestKey={yesterdayKey}
-          latestSignature={todaySignature}
-          latestTrackCount={trackCount}
-          history={historyForCard}
-          tracksPerDay={tracksPerDay}
-        />
-
-        {userId && <FriendsSection currentUserId={userId} />}
       </main>
+
+      <BottomNav active="home" />
     </div>
   );
 }

@@ -41,6 +41,7 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -102,45 +103,16 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
   if (!mounted) return null;
 
   return (
-    <section className="space-y-4 pt-2">
+    <section className="space-y-3 pt-2">
+      {/* Header row */}
       <div className="flex items-center justify-between">
-        <h2 className="text-white/40 text-xs font-medium tracking-widest uppercase">
-          Friends
-        </h2>
-      </div>
-
-      {/* Add friend */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => { setInput(e.target.value); setError(null); }}
-          onKeyDown={(e) => e.key === "Enter" && addFriend()}
-          placeholder="Friend's Spotify user ID"
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5
-                     text-white text-sm placeholder:text-white/25
-                     focus:outline-none focus:border-white/25 transition-colors"
-        />
+        <h2 className="text-white/40 text-xs font-medium tracking-widest uppercase">Friends</h2>
         <button
-          onClick={addFriend}
-          className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15
-                     text-white text-sm font-medium transition-colors"
+          onClick={() => { setShowModal(true); setError(null); }}
+          className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+          style={{ background: "rgba(196,168,240,0.1)", color: "rgba(196,168,240,0.7)" }}
         >
-          Add
-        </button>
-      </div>
-      {error && <p className="text-red-400/70 text-xs -mt-2">{error}</p>}
-
-      {/* Your ID */}
-      <div className="flex items-center gap-2">
-        <p className="text-white/20 text-xs">
-          Your ID: <span className="font-mono text-white/35">{currentUserId}</span>
-        </p>
-        <button
-          onClick={copyId}
-          className="text-white/20 hover:text-white/50 text-xs transition-colors"
-        >
-          {copied ? "Copied!" : "Copy"}
+          + Add friend
         </button>
       </div>
 
@@ -148,9 +120,7 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
       {friendIds.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
           <p className="text-white/30 text-sm">No friends added yet</p>
-          <p className="text-white/15 text-xs mt-1">
-            Share your ID above and add your friends&apos; IDs to see their Signatures
-          </p>
+          <p className="text-white/15 text-xs mt-1">Tap &quot;Add friend&quot; to see their signatures</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -164,6 +134,62 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
             />
           ))}
         </div>
+      )}
+
+      {/* Add-friend modal */}
+      {showModal && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-50"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            onClick={() => { setShowModal(false); setError(null); setInput(""); }}
+          />
+          {/* Sheet */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl p-6"
+            style={{ background: "rgba(18,12,32,0.98)", border: "1px solid rgba(255,255,255,0.1)", borderBottom: "none" }}
+          >
+            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
+            <p className="text-white font-semibold text-lg mb-1">Add a friend</p>
+            <p className="text-white/35 text-sm mb-5">Enter their Spotify user ID to see their Signature</p>
+
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => { setInput(e.target.value); setError(null); }}
+                onKeyDown={(e) => e.key === "Enter" && addFriend()}
+                placeholder="Spotify user ID"
+                autoFocus
+                className="flex-1 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-colors"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+              <button
+                onClick={addFriend}
+                className="px-5 py-3 rounded-xl text-sm font-semibold transition-colors"
+                style={{ background: "rgba(196,168,240,0.2)", color: "rgba(196,168,240,1)" }}
+              >
+                Add
+              </button>
+            </div>
+            {error && <p className="text-red-400/70 text-xs mb-3">{error}</p>}
+
+            {/* Your ID */}
+            <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-white/25 text-xs flex-1 truncate">
+                Your ID: <span className="font-mono text-white/40">{currentUserId}</span>
+              </p>
+              <button
+                onClick={copyId}
+                className="text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
+              >
+                {copied ? "Copied ✓" : "Copy"}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </section>
   );
