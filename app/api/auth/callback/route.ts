@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/?error=access_denied", request.url));
   }
 
-  // Decode podId from the state param (set by /api/auth/login)
+  // Decode routing info from the state param (set by /api/auth/login)
   const state = searchParams.get("state") ?? "";
   const podId = state.startsWith("pod:") ? state.slice(4) : null;
+  const nextPath = state.startsWith("next:") ? state.slice(5) : null;
 
   // Resolve credentials: pod credentials if pod login, else default app credentials
   let clientId = process.env.SPOTIFY_CLIENT_ID!;
@@ -82,9 +83,10 @@ export async function GET(request: NextRequest) {
 
   // Use meta-refresh so the Set-Cookie header lands on this response
   // before the browser navigates — a plain redirect loses the cookie.
+  const destination = nextPath ? `/${nextPath}` : "/dashboard";
   return new NextResponse(
     `<!doctype html><html><head>
-      <meta http-equiv="refresh" content="0; url=/dashboard">
+      <meta http-equiv="refresh" content="0; url=${destination}">
     </head><body></body></html>`,
     { headers: { "Content-Type": "text/html" } }
   );

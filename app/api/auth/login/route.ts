@@ -12,6 +12,7 @@ const SCOPES = [
 
 export async function GET(request: NextRequest) {
   const podId = request.nextUrl.searchParams.get("pod") ?? "";
+  const next = request.nextUrl.searchParams.get("next") ?? "";
 
   let clientId = process.env.SPOTIFY_CLIENT_ID!;
   if (podId) {
@@ -21,8 +22,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Encode podId in the state param so the callback knows which pod to use
-  const state = podId ? `pod:${podId}` : "default";
+  // Encode routing info in state: pod login, post-login redirect, or default
+  const state = podId ? `pod:${podId}` : next ? `next:${next}` : "default";
 
   const params = new URLSearchParams({
     client_id: clientId,

@@ -4,7 +4,7 @@ import { CreatePodForm } from "./CreatePodForm";
 
 export default async function CreatePodPage() {
   const session = await getSession();
-  if (!session.accessToken) redirect("/api/auth/login");
+  if (!session.accessToken) redirect("/api/auth/login?next=create-pod");
   if (session.podId) redirect("/dashboard"); // already in a pod
 
   return (
