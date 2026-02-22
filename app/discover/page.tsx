@@ -12,7 +12,7 @@ export default async function DiscoverPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-      <DiscoverView accessToken={accessToken} friendNames={{}} />
+      <DiscoverView accessToken={accessToken} />
       <BottomNav active="discover" />
     </div>
   );

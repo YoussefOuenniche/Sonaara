@@ -48,12 +48,7 @@ function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
 
-export function DiscoverView({
-  accessToken,
-}: {
-  accessToken: string;
-  friendNames: Record<string, string>;
-}) {
+export function DiscoverView({ accessToken }: { accessToken: string }) {
   const [phase, setPhase] = useState<Phase>("prompt");
   const [genre, setGenre] = useState("anything");
   const [dropdownOpen, setDropdownOpen] = useState(false);

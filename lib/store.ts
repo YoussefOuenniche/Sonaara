@@ -166,6 +166,13 @@ export async function removeLikedTrack(userId: string, trackId: string): Promise
   });
 }
 
+/** One-time migration: clear stale discoverLikes and mark the record as clean. */
+export async function markDiscoverLikesClean(userId: string): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  await redis.set(`user:${userId}`, { ...existing, discoverLikes: [], discoverLikesClean: true });
+}
+
 /** Add a track liked through Sonaara Discover to the dedicated display list. */
 export async function addDiscoverLike(userId: string, track: DiscoverTrack): Promise<void> {
   const existing = await redis.get<UserRecord>(`user:${userId}`);
