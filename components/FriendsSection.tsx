@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { formatRelativeTime } from "@/lib/spotify";
+
 import type { UserRecord } from "@/lib/store";
 
 const LS_KEY = "sonaara_friends";
@@ -185,75 +185,58 @@ function FriendCard({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          {data.userImage ? (
-            <div className="relative w-7 h-7 flex-shrink-0">
-              <Image
-                src={data.userImage}
-                alt={data.userName}
-                fill
-                className="rounded-full object-cover"
-                sizes="28px"
-              />
-            </div>
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60">
-              {data.userName[0]?.toUpperCase() ?? "?"}
-            </div>
-          )}
-          <span className="text-white text-sm font-medium">{data.userName}</span>
-        </div>
-        <button onClick={onRemove} className="text-white/20 hover:text-white/50 text-xs transition-colors">
-          Remove
+    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3 space-y-2">
+      {/* Row 1: avatar + name + emojis + remove */}
+      <div className="flex items-center gap-2.5">
+        {data.userImage ? (
+          <div className="relative w-6 h-6 flex-shrink-0">
+            <Image
+              src={data.userImage}
+              alt={data.userName}
+              fill
+              className="rounded-full object-cover"
+              sizes="24px"
+            />
+          </div>
+        ) : (
+          <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60 flex-shrink-0">
+            {data.userName[0]?.toUpperCase() ?? "?"}
+          </div>
+        )}
+        <span className="text-white/80 text-sm font-medium flex-1 truncate">{data.userName}</span>
+        {data.signature ? (
+          <span className="text-xl leading-none select-none tracking-wide">
+            {data.signature.genre}{data.signature.mood}{data.signature.theme}
+          </span>
+        ) : (
+          <span className="text-white/20 text-xs">no signature</span>
+        )}
+        <button onClick={onRemove} className="text-white/15 hover:text-white/40 text-xs transition-colors ml-1">
+          ✕
         </button>
       </div>
 
-      {/* Signature */}
-      {data.signature ? (
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {(
-            [
-              { emoji: data.signature.genre, label: data.signature.genreLabel, sub: "Genre" },
-              { emoji: data.signature.mood, label: data.signature.moodLabel, sub: "Mood" },
-              { emoji: data.signature.theme, label: data.signature.themeLabel, sub: "Theme" },
-            ] as const
-          ).map(({ emoji, label, sub }) => (
-            <div key={sub} className="flex flex-col items-center gap-1 py-1">
-              <span className="text-3xl leading-none select-none">{emoji}</span>
-              <span className="text-white/70 text-xs font-medium text-center leading-tight">{label}</span>
-              <span className="text-white/25 text-xs text-center">{sub}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-white/25 text-xs mb-3">No signature for yesterday</p>
-      )}
-
-      {/* Last track */}
+      {/* Row 2: latest song */}
       {data.lastTrack && (
-        <div className="flex items-center gap-2 border-t border-white/5 pt-3">
+        <div className="flex items-center gap-2 pl-8">
           {data.lastTrack.albumImageUrl && (
-            <div className="relative w-7 h-7 flex-shrink-0">
+            <div className="relative w-5 h-5 flex-shrink-0">
               <Image
                 src={data.lastTrack.albumImageUrl}
                 alt={data.lastTrack.albumName}
                 fill
                 className="rounded object-cover"
-                sizes="28px"
+                sizes="20px"
               />
             </div>
           )}
-          <div className="min-w-0 flex-1">
-            <p className="text-white/55 text-xs truncate">{data.lastTrack.name}</p>
-            <p className="text-white/30 text-xs truncate">{data.lastTrack.artists.join(", ")}</p>
-          </div>
+          <p className="text-white/30 text-xs truncate">
+            <span className="text-white/20">latest: </span>
+            {data.lastTrack.name}
+            <span className="text-white/15"> · {data.lastTrack.artists.join(", ")}</span>
+          </p>
         </div>
       )}
-
-      <p className="text-white/15 text-xs mt-2">Updated {formatRelativeTime(data.updatedAt)}</p>
     </div>
   );
 }
