@@ -41,18 +41,6 @@ const GENRES = [
   { label: "K-Pop", value: "k-pop" },
 ];
 
-// Ambient nature / aurora / color-fade GIFs
-const BG_GIFS = [
-  "https://media.giphy.com/media/EXQo3zIznKjJaVt8F3/giphy.gif",  // aurora borealis — PBS Nature
-  "https://media.giphy.com/media/l0HlwJjjH8HRtG01y/giphy.gif",   // aurora — all-sky timelapse
-  "https://media.giphy.com/media/KCph3iFjE82y5urPpY/giphy.gif",  // aurora swirling colors
-  "https://media.giphy.com/media/9oIFheiR1K8gdtWfVz/giphy.gif",  // aurora — Canadian night sky
-  "https://media.giphy.com/media/ctE0KzgWp0dt5VCljx/giphy.gif",  // aurora — Nat Geo documentary
-  "https://media.giphy.com/media/PGhgbrTPAqFQTeKUMb/giphy.gif",  // aurora — night sky beauty
-  "https://media.giphy.com/media/oNb3GLUvhF768/giphy.gif",       // aurora — calm dreaming
-  "https://media.giphy.com/media/798oH0WDEQnicM4857/giphy.gif",  // ocean waves — vaporwave palette
-  "https://media.giphy.com/media/3q3SUqPnxZGQpMNcjc/giphy.gif",  // abstract gradient waves
-];
 
 type Phase = "prompt" | "cards";
 
@@ -74,7 +62,6 @@ export function DiscoverView({
   const [unavailableMsg, setUnavailableMsg] = useState(false);
   const [pool, setPool] = useState<DiscoverTrack[]>([]);
   const [index, setIndex] = useState(0);
-  const [bgIndex, setBgIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
@@ -121,7 +108,6 @@ export function DiscoverView({
   useEffect(() => {
     if (current && playerState.isReady) {
       playTrack(current.uri);
-      setBgIndex(Math.floor(Math.random() * BG_GIFS.length));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, playerState.isReady]);
@@ -463,12 +449,11 @@ export function DiscoverView({
 
       {/* Card area */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
-        {/* Background GIF */}
+        {/* Ambient background */}
         {current && (
           <div className="absolute inset-0 z-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={BG_GIFS[bgIndex]} alt="" className="w-full h-full object-cover opacity-25" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/55" />
+            <div className="ambient-bg absolute inset-0 opacity-60" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/50" />
           </div>
         )}
 

@@ -63,6 +63,27 @@ body {
   animation: fade-up 0.3s ease-out both;
 }
 
+/* ── Discover ambient background ── */
+@keyframes ambient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.ambient-bg {
+  background: linear-gradient(
+    135deg,
+    #1a0533,
+    #0d1a3a,
+    #0a2a2a,
+    #1a0f2e,
+    #2a0a1a,
+    #0f1f3a,
+    #1a1a0a
+  );
+  background-size: 400% 400%;
+  animation: ambient-shift 18s ease infinite;
+}
+
 /* ── Window open (zoom + spring from center) ── */
 @keyframes window-open {
   from { opacity: 0; transform: scale(0.82); }
