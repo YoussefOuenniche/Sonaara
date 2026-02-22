@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { savePod } from "@/lib/pods";
+import { savePod, setUserPodId } from "@/lib/pods";
 import type { Pod } from "@/types";
 
 function nanoid(length = 8): string {
@@ -73,7 +73,10 @@ export async function POST(request: NextRequest) {
     createdAt: new Date().toISOString(),
   };
 
-  await savePod(pod);
+  await Promise.all([
+    savePod(pod),
+    setUserPodId(session.userId, podId),
+  ]);
 
   await triggerGitHubWorkflow({
     podId,

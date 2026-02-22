@@ -27,10 +27,21 @@ export async function addPodMember(podId: string, userId: string): Promise<void>
   if (!existing) return;
   if (existing.memberIds.includes(userId)) return;
   if (existing.memberIds.length >= POD_MAX_MEMBERS) return; // cap reached
-  await redis.set(`pod:${podId}`, {
-    ...existing,
-    memberIds: [...existing.memberIds, userId],
-  });
+  await Promise.all([
+    redis.set(`pod:${podId}`, {
+      ...existing,
+      memberIds: [...existing.memberIds, userId],
+    }),
+    redis.set(`user:${userId}:podId`, podId),
+  ]);
+}
+
+export async function getUserPodId(userId: string): Promise<string | null> {
+  return redis.get<string>(`user:${userId}:podId`);
+}
+
+export async function setUserPodId(userId: string, podId: string): Promise<void> {
+  await redis.set(`user:${userId}:podId`, podId);
 }
 
 export async function addPendingEmail(podId: string, email: string): Promise<void> {

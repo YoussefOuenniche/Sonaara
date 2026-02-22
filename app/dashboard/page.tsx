@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getSession, getAccessToken } from "@/lib/session";
 import { upsertUser, getUser, setLikedTracks, getUsers } from "@/lib/store";
-import { getPod } from "@/lib/pods";
+import { getPod, getUserPodId } from "@/lib/pods";
 import {
   getLastPlayedTrack,
   getYesterdayTracks,
@@ -110,8 +110,9 @@ export default async function DashboardPage() {
 
   // ── Pod data (if user is in a pod) ──────────────────────────────────────
   let podData: { pod: import("@/types").Pod; members: import("@/lib/store").UserRecord[] } | null = null;
-  if (session.podId) {
-    const pod = await getPod(session.podId).catch(() => null);
+  const resolvedPodId = session.podId ?? (userId ? await getUserPodId(userId).catch(() => null) : null);
+  if (resolvedPodId) {
+    const pod = await getPod(resolvedPodId).catch(() => null);
     if (pod) {
       const otherMemberIds = pod.memberIds.filter((id) => id !== userId);
       const members = otherMemberIds.length ? await getUsers(otherMemberIds).catch(() => []) : [];
