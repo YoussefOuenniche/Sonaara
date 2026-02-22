@@ -41,18 +41,17 @@ const GENRES = [
   { label: "K-Pop", value: "k-pop" },
 ];
 
-// Music & nature aesthetic GIFs — mix of confirmed-working + curated
+// Ambient nature / aurora / color-fade GIFs
 const BG_GIFS = [
-  "https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif",           // vinyl record
-  "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",          // galaxy / stars
-  "https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif",          // concert stage lights
-  "https://media.giphy.com/media/3o6Zt4HU9uwXmXSAuI/giphy.gif",          // fireplace
-  "https://media.giphy.com/media/3oEjI5VtIhHvK37WYo/giphy.gif",          // piano keys
-  "https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.gif",           // mountain landscape
-  "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif",            // misty forest
-  "https://media.giphy.com/media/3o7TKwxYkeW0ZvTqsU/giphy.gif",          // rain on glass
-  "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbzBrM2R6dHVtN2NoMGZ6ZDB5dno3cXk1anMxcHZwbm53ZHdkMmRpZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnqM/giphy.gif",   // ocean waves
-  "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzYzOGU2YnpsMGxvcXU1cHp3am94NTFwOGVydGhqcWoxeWs4cjNrNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7btQ8jDTPGDMDqSk/giphy.gif",  // deep forest
+  "https://media.giphy.com/media/EXQo3zIznKjJaVt8F3/giphy.gif",  // aurora borealis — PBS Nature
+  "https://media.giphy.com/media/l0HlwJjjH8HRtG01y/giphy.gif",   // aurora — all-sky timelapse
+  "https://media.giphy.com/media/KCph3iFjE82y5urPpY/giphy.gif",  // aurora swirling colors
+  "https://media.giphy.com/media/9oIFheiR1K8gdtWfVz/giphy.gif",  // aurora — Canadian night sky
+  "https://media.giphy.com/media/ctE0KzgWp0dt5VCljx/giphy.gif",  // aurora — Nat Geo documentary
+  "https://media.giphy.com/media/PGhgbrTPAqFQTeKUMb/giphy.gif",  // aurora — night sky beauty
+  "https://media.giphy.com/media/oNb3GLUvhF768/giphy.gif",       // aurora — calm dreaming
+  "https://media.giphy.com/media/798oH0WDEQnicM4857/giphy.gif",  // ocean waves — vaporwave palette
+  "https://media.giphy.com/media/3q3SUqPnxZGQpMNcjc/giphy.gif",  // abstract gradient waves
 ];
 
 type Phase = "prompt" | "cards";
