@@ -359,7 +359,7 @@ export function DiscoverView({
                       spellCheck={false}
                     />
                   </div>
-                  <div className="overflow-y-auto" style={{ maxHeight: "260px" }}>
+                  <div className="overflow-y-auto" style={{ maxHeight: "220px" }}>
                     {GENRES
                       .filter((g) =>
                         genreSearch.trim() === "" ||
@@ -404,19 +404,23 @@ export function DiscoverView({
                         );
                       })}
                   </div>
-                </div>
 
-                {/* Unavailable genre message */}
-                <div
-                  className="text-center text-xs mt-2 transition-opacity duration-500"
-                  style={{
-                    color: "rgba(255,255,255,0.3)",
-                    opacity: unavailableMsg ? 1 : 0,
-                    pointerEvents: "none",
-                    minHeight: "16px",
-                  }}
-                >
-                  your friends don&apos;t seem to listen to this genre
+                  {/* Unavailable genre message — inside the panel so it's always visible */}
+                  <div
+                    className="text-center text-xs px-4 transition-all duration-500"
+                    style={{
+                      color: "rgba(255,255,255,0.3)",
+                      opacity: unavailableMsg ? 1 : 0,
+                      maxHeight: unavailableMsg ? "32px" : "0px",
+                      paddingTop: unavailableMsg ? "8px" : "0px",
+                      paddingBottom: unavailableMsg ? "8px" : "0px",
+                      overflow: "hidden",
+                      borderTop: unavailableMsg ? "1px solid rgba(255,255,255,0.05)" : "1px solid transparent",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    your friends don&apos;t seem to listen to this genre
+                  </div>
                 </div>
               </div>
 
