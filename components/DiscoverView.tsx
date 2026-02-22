@@ -74,8 +74,8 @@ export function DiscoverView({
   const [index, setIndex] = useState(0);
   const [bgIndex, setBgIndex] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [liking, setLiking] = useState(false);
   const [done, setDone] = useState(false);
+  const exitingRef = useRef(false);
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -134,49 +134,45 @@ export function DiscoverView({
     setIndex(0);
   }
 
-  function advance() {
-    if (index + 1 >= pool.length) { setDone(true); return; }
-    setCardOpacity(0);
-    setIndex((i) => i + 1);
-    setTimeout(() => setCardOpacity(1), 40);
-  }
+  async function triggerExit(dir: "left" | "right") {
+    if (exitingRef.current || !current) return;
+    exitingRef.current = true;
 
-  async function handleLike() {
-    if (!current || liking || exitDir) return;
-    setLiking(true);
-    await fetch("/api/discover/like", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ track: current }),
-    });
-    setLiking(false);
-    advance();
-  }
+    // Fire API immediately — non-blocking
+    if (dir === "right") {
+      fetch("/api/discover/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track: current }),
+      }).catch(() => {});
+    } else {
+      fetch("/api/discover/skip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: current.id }),
+      }).catch(() => {});
+    }
 
-  async function handleSkip() {
-    if (!current || exitDir) return;
-    await fetch("/api/discover/skip", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trackId: current.id }),
-    });
-    advance();
-  }
-
-  async function swipeRight() {
-    setExitDir("right");
-    await sleep(320);
-    setExitDir(null);
+    // Animate card off screen
+    setExitDir(dir);
     setDragOffset(0);
-    handleLike();
-  }
-
-  async function swipeLeft() {
-    setExitDir("left");
     await sleep(320);
+
+    // Card is gone — advance to next
+    exitingRef.current = false;
     setExitDir(null);
-    setDragOffset(0);
-    handleSkip();
+
+    // Use functional update to read latest index
+    setIndex((i) => {
+      const next = i + 1;
+      if (next >= pool.length) {
+        setDone(true);
+        return i;
+      }
+      setCardOpacity(0);
+      setTimeout(() => setCardOpacity(1), 40);
+      return next;
+    });
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -194,8 +190,8 @@ export function DiscoverView({
   function onPointerUp() {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
-    if (dragOffset > SWIPE_THRESHOLD) swipeRight();
-    else if (dragOffset < -SWIPE_THRESHOLD) swipeLeft();
+    if (dragOffset > SWIPE_THRESHOLD) triggerExit("right");
+    else if (dragOffset < -SWIPE_THRESHOLD) triggerExit("left");
     else setDragOffset(0);
   }
 
@@ -468,7 +464,7 @@ export function DiscoverView({
             <div className="flex items-center gap-7 mt-1">
               {/* Skip — red */}
               <button
-                onClick={() => { triggerSkipAnim(); handleSkip(); }}
+                onClick={() => { triggerSkipAnim(); triggerExit("left"); }}
                 className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-150"
                 style={{
                   background: skipAnim ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.08)",
@@ -502,17 +498,14 @@ export function DiscoverView({
 
               {/* Like — pink */}
               <button
-                onClick={() => { triggerHeartAnim(); handleLike(); }}
-                disabled={liking}
-                className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-150 disabled:opacity-50"
+                onClick={() => { triggerHeartAnim(); triggerExit("right"); }}
+                className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-150"
                 style={{
                   background: heartAnim ? "rgba(236,72,153,0.3)" : "rgba(255,255,255,0.08)",
                   transform: heartAnim ? "scale(1.2)" : "scale(1)",
                 }}
               >
-                <span className="text-xl transition-colors duration-150" style={{ color: heartAnim ? "#f472b6" : "rgba(255,255,255,0.7)" }}>
-                  {liking ? "…" : "♥"}
-                </span>
+                <span className="text-xl transition-colors duration-150" style={{ color: heartAnim ? "#f472b6" : "rgba(255,255,255,0.7)" }}>♥</span>
               </button>
             </div>
           </div>
