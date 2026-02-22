@@ -116,20 +116,6 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
         </button>
       </div>
 
-      {/* Your ID row */}
-      <div className="flex items-center gap-2 px-1">
-        <p className="text-white/25 text-xs flex-1 truncate">
-          Your ID: <span className="font-mono text-white/45">{currentUserId}</span>
-        </p>
-        <button
-          onClick={copyId}
-          className="text-xs px-2.5 py-1 rounded-lg flex-shrink-0 transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}
-        >
-          {copied ? "Copied ✓" : "Copy"}
-        </button>
-      </div>
-
       {/* Friend cards */}
       {friendIds.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
