@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPod, updatePod, clearPendingEmails } from "@/lib/pods";
+import { getPod, updatePod, clearPendingEmails, setUserPodId } from "@/lib/pods";
 import { encrypt } from "@/lib/encryption";
 
 function verifySecret(request: NextRequest): boolean {
@@ -38,13 +38,16 @@ export async function POST(request: NextRequest) {
     if (!clientId || !clientSecret) {
       return NextResponse.json({ error: "Missing credentials" }, { status: 400 });
     }
-    await updatePod(podId, {
-      clientId,
-      clientSecretEncrypted: encrypt(clientSecret),
-      spotifyAppId: spotifyAppId ?? "",
-      sessionCookiesEncrypted: sessionCookies ? encrypt(sessionCookies) : "",
-      status: "ready",
-    });
+    await Promise.all([
+      updatePod(podId, {
+        clientId,
+        clientSecretEncrypted: encrypt(clientSecret),
+        spotifyAppId: spotifyAppId ?? "",
+        sessionCookiesEncrypted: sessionCookies ? encrypt(sessionCookies) : "",
+        status: "ready",
+      }),
+      setUserPodId(pod.adminUserId, podId),
+    ]);
     return NextResponse.json({ ok: true });
   }
 
