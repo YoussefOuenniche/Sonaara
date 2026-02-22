@@ -19,6 +19,7 @@ export interface UserRecord {
   friendIds?: string[]; // persisted friend list
   likedTracks?: DiscoverTrack[]; // Spotify library cache — used for discover pool filtering
   discoverLikes?: DiscoverTrack[]; // tracks liked through Sonaara Discover — shown in Songs tab
+  discoverLikesClean?: boolean; // true once the post-migration stale data has been cleared
   skippedTrackIds?: string[]; // track IDs skipped in discover (for fast Set lookup)
   skippedTracks?: DiscoverTrack[]; // full skipped track objects (for Songs tab display)
   refreshToken?: string; // Spotify refresh token — used by daily cron
@@ -65,6 +66,7 @@ export async function upsertUser(
     friendIds: existing?.friendIds,
     likedTracks: existing?.likedTracks,
     discoverLikes: existing?.discoverLikes,
+    discoverLikesClean: existing?.discoverLikesClean,
     skippedTrackIds: existing?.skippedTrackIds,
     skippedTracks: existing?.skippedTracks,
     refreshToken: existing?.refreshToken,
