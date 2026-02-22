@@ -150,14 +150,19 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-50"
+            className="fixed inset-0 z-[60]"
             style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
             onClick={() => { setShowModal(false); setError(null); setInput(""); }}
           />
           {/* Sheet */}
           <div
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl p-6"
-            style={{ background: "rgba(18,12,32,0.98)", border: "1px solid rgba(255,255,255,0.1)", borderBottom: "none" }}
+            className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-3xl p-6"
+            style={{
+              background: "rgba(18,12,32,0.98)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderBottom: "none",
+              paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+            }}
           >
             <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
             <div className="flex items-center justify-between mb-1">
@@ -181,8 +186,8 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
                 onKeyDown={(e) => e.key === "Enter" && addFriend()}
                 placeholder="Spotify user ID"
                 autoFocus
-                className="flex-1 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-colors"
-                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+                className="flex-1 rounded-xl px-4 py-3 text-white placeholder:text-white/25 focus:outline-none transition-colors"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", fontSize: 16 }}
               />
               <button
                 onClick={addFriend}
