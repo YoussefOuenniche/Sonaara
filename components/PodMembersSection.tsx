@@ -137,19 +137,32 @@ export function PodMembersSection({
             {pod.podName}
           </p>
         </div>
+      </div>
+
+      {/* Invite friends */}
+      <div
+        className="rounded-xl px-4 py-3 mb-4 flex items-center justify-between gap-3"
+        style={{ background: "rgba(196,168,240,0.06)", border: "1px solid rgba(196,168,240,0.1)" }}
+      >
+        <div className="min-w-0">
+          <p className="text-xs mb-1" style={{ color: "rgba(196,168,240,0.45)" }}>Invite friends</p>
+          <p className="text-sm font-mono font-semibold tracking-wider truncate" style={{ color: "rgba(196,168,240,0.85)" }}>
+            {pod.podId}
+          </p>
+        </div>
         <button
           onClick={copyJoinLink}
-          className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
-          style={{ background: "rgba(196,168,240,0.1)", color: "rgba(196,168,240,0.65)" }}
+          className="text-xs px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80"
+          style={{ background: "rgba(196,168,240,0.12)", color: "rgba(196,168,240,0.7)" }}
         >
-          {copied ? "Copied!" : "Copy invite link"}
+          {copied ? "Copied!" : "Copy link"}
         </button>
       </div>
 
       {/* Member list */}
       {members.length === 0 ? (
         <p className="text-sm py-2" style={{ color: "var(--lilac)", opacity: 0.3 }}>
-          No other members yet. Share the invite link to get started.
+          No other members yet.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
