@@ -70,6 +70,9 @@ export function DiscoverView({
   const [phase, setPhase] = useState<Phase>("prompt");
   const [genre, setGenre] = useState("anything");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [genreSearch, setGenreSearch] = useState("");
+  const [availableGenres, setAvailableGenres] = useState<Set<string> | null>(null);
+  const [unavailableMsg, setUnavailableMsg] = useState(false);
   const [pool, setPool] = useState<DiscoverTrack[]>([]);
   const [index, setIndex] = useState(0);
   const [bgIndex, setBgIndex] = useState(0);
@@ -124,6 +127,19 @@ export function DiscoverView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, playerState.isReady]);
 
+  // Fetch available genres once when on prompt screen
+  useEffect(() => {
+    if (phase !== "prompt" || availableGenres !== null) return;
+    fetch("/api/discover/genres")
+      .then((r) => r.json())
+      .then((data: { available: string[] }) => {
+        setAvailableGenres(new Set(data.available));
+      })
+      .catch(() => {
+        setAvailableGenres(new Set()); // on error, all greyed — fail silently
+      });
+  }, [phase, availableGenres]);
+
   function handleSubmit() {
     activateElement();
     setPhase("cards");
@@ -135,6 +151,7 @@ export function DiscoverView({
     setPool([]);
     setDone(false);
     setIndex(0);
+    setAvailableGenres(null);
   }
 
   async function triggerExit(dir: "left" | "right") {
@@ -296,7 +313,7 @@ export function DiscoverView({
               <div className="relative mb-5">
                 {/* Backdrop to close */}
                 {dropdownOpen && (
-                  <div className="fixed inset-0 z-30" onClick={() => setDropdownOpen(false)} />
+                  <div className="fixed inset-0 z-30" onClick={() => { setDropdownOpen(false); setGenreSearch(""); }} />
                 )}
 
                 {/* Trigger */}
@@ -318,7 +335,7 @@ export function DiscoverView({
                 <div
                   className="absolute left-0 right-0 z-40 rounded-2xl mt-2 overflow-hidden"
                   style={{
-                    maxHeight: dropdownOpen ? "280px" : "0px",
+                    maxHeight: dropdownOpen ? "320px" : "0px",
                     opacity: dropdownOpen ? 1 : 0,
                     transition: "max-height 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.18s ease",
                     background: "rgba(18,12,32,0.97)",
@@ -327,28 +344,79 @@ export function DiscoverView({
                     boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
                   }}
                 >
-                  <div className="overflow-y-auto" style={{ maxHeight: "280px" }}>
-                    {GENRES.map((g) => (
-                      <button
-                        key={g.value}
-                        onClick={() => { setGenre(g.value); setDropdownOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                        style={{
-                          color: g.value === genre ? "rgba(196,168,240,1)" : "rgba(255,255,255,0.65)",
-                          background: g.value === genre ? "rgba(196,168,240,0.12)" : "transparent",
-                          fontWeight: g.value === genre ? 600 : 400,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (g.value !== genre) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (g.value !== genre) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                        }}
-                      >
-                        {g.label}
-                      </button>
-                    ))}
+                  {/* Search input */}
+                  <div className="px-3 pt-2.5 pb-1.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <input
+                      type="text"
+                      placeholder="Search genres…"
+                      value={genreSearch}
+                      onChange={(e) => setGenreSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-white/20"
+                      style={{ color: "rgba(255,255,255,0.7)" }}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                    />
                   </div>
+                  <div className="overflow-y-auto" style={{ maxHeight: "260px" }}>
+                    {GENRES
+                      .filter((g) =>
+                        genreSearch.trim() === "" ||
+                        g.label.toLowerCase().includes(genreSearch.toLowerCase())
+                      )
+                      .map((g) => {
+                        const isAvailable = g.value === "anything" || availableGenres === null || availableGenres.has(g.value);
+                        const isSelected = g.value === genre;
+                        return (
+                          <button
+                            key={g.value}
+                            onClick={() => {
+                              if (!isAvailable) {
+                                setUnavailableMsg(true);
+                                setTimeout(() => setUnavailableMsg(false), 2200);
+                                return;
+                              }
+                              setGenre(g.value);
+                              setDropdownOpen(false);
+                              setGenreSearch("");
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                            style={{
+                              color: isSelected
+                                ? "rgba(196,168,240,1)"
+                                : isAvailable
+                                ? "rgba(255,255,255,0.65)"
+                                : "rgba(255,255,255,0.22)",
+                              background: isSelected ? "rgba(196,168,240,0.12)" : "transparent",
+                              fontWeight: isSelected ? 600 : 400,
+                              cursor: isAvailable ? "pointer" : "default",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected && isAvailable) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = isSelected ? "rgba(196,168,240,0.12)" : "transparent";
+                            }}
+                          >
+                            {g.label}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Unavailable genre message */}
+                <div
+                  className="text-center text-xs mt-2 transition-opacity duration-500"
+                  style={{
+                    color: "rgba(255,255,255,0.3)",
+                    opacity: unavailableMsg ? 1 : 0,
+                    pointerEvents: "none",
+                    minHeight: "16px",
+                  }}
+                >
+                  your friends don&apos;t seem to listen to this genre
                 </div>
               </div>
 
