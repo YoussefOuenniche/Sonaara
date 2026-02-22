@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
-import { getUser, setLikedTracks } from "@/lib/store";
+import { getUser, setLikedTracks, addDiscoverLike } from "@/lib/store";
 import type { DiscoverTrack } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -27,16 +27,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Spotify error" }, { status: 502 });
   }
 
-  // Update local liked tracks cache
+  // Update local liked tracks cache + Sonaara-specific discover likes
   const user = await getUser(session.userId);
   if (user) {
     const already = (user.likedTracks ?? []).some((t) => t.id === track.id);
-    if (!already) {
-      await setLikedTracks(session.userId, [
+    await Promise.all([
+      already ? Promise.resolve() : setLikedTracks(session.userId, [
         ...(user.likedTracks ?? []),
         { ...track, likedByUserIds: [], likedByNames: [] },
-      ]);
-    }
+      ]),
+      addDiscoverLike(session.userId, track),
+    ]);
   }
 
   return NextResponse.json({ ok: true });

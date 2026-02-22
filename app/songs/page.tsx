@@ -14,7 +14,7 @@ export default async function SongsPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
       <SongsView
-        likedTracks={user?.likedTracks ?? []}
+        likedTracks={user?.discoverLikes ?? []}
         skippedTracks={user?.skippedTracks ?? []}
       />
       <BottomNav active="songs" />

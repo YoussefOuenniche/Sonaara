@@ -17,7 +17,8 @@ export interface UserRecord {
   lastTrack: Track | null;
   signatureHistory: Record<string, Signature | null>; // "YYYY-MM-DD" → Signature
   friendIds?: string[]; // persisted friend list
-  likedTracks?: DiscoverTrack[]; // cached liked songs for discover pool
+  likedTracks?: DiscoverTrack[]; // Spotify library cache — used for discover pool filtering
+  discoverLikes?: DiscoverTrack[]; // tracks liked through Sonaara Discover — shown in Songs tab
   skippedTrackIds?: string[]; // track IDs skipped in discover (for fast Set lookup)
   skippedTracks?: DiscoverTrack[]; // full skipped track objects (for Songs tab display)
   refreshToken?: string; // Spotify refresh token — used by daily cron
@@ -63,6 +64,7 @@ export async function upsertUser(
     // Preserve fields that upsertUser doesn't manage
     friendIds: existing?.friendIds,
     likedTracks: existing?.likedTracks,
+    discoverLikes: existing?.discoverLikes,
     skippedTrackIds: existing?.skippedTrackIds,
     skippedTracks: existing?.skippedTracks,
     refreshToken: existing?.refreshToken,
@@ -158,5 +160,18 @@ export async function removeLikedTrack(userId: string, trackId: string): Promise
   await redis.set(`user:${userId}`, {
     ...existing,
     likedTracks: (existing.likedTracks ?? []).filter((t) => t.id !== trackId),
+    discoverLikes: (existing.discoverLikes ?? []).filter((t) => t.id !== trackId),
+  });
+}
+
+/** Add a track liked through Sonaara Discover to the dedicated display list. */
+export async function addDiscoverLike(userId: string, track: DiscoverTrack): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  const already = (existing.discoverLikes ?? []).some((t) => t.id === track.id);
+  if (already) return;
+  await redis.set(`user:${userId}`, {
+    ...existing,
+    discoverLikes: [...(existing.discoverLikes ?? []), { ...track, likedByUserIds: [], likedByNames: [] }],
   });
 }
