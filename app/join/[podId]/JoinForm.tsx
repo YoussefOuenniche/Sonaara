@@ -52,13 +52,13 @@ export function JoinForm({
     </div>
   );
 
-  const loginBtn = (label: string) => (
+  const loginBtn = () => (
     <a
       href={`/api/auth/login?pod=${podId}`}
       className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
       style={{ background: "rgba(196,168,240,0.15)", color: "rgba(196,168,240,0.8)" }}
     >
-      {label}
+      Log in →
     </a>
   );
 
@@ -71,7 +71,7 @@ export function JoinForm({
           <p className="text-white/30 text-sm">{podName} has reached its member limit.</p>
         </div>
         {divider("already a member?")}
-        {loginBtn("Log in with Spotify →")}
+        {loginBtn()}
       </div>
     );
   }
@@ -93,7 +93,7 @@ export function JoinForm({
           className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
           style={{ background: "rgba(196,168,240,0.2)", color: "rgba(196,168,240,1)" }}
         >
-          Log in with Spotify →
+          Log in →
         </a>
       </div>
     );
@@ -119,7 +119,7 @@ export function JoinForm({
         </button>
 
         {divider("already approved?")}
-        {loginBtn("Log in with Spotify →")}
+        {loginBtn()}
       </div>
     );
   }
@@ -132,12 +132,12 @@ export function JoinForm({
         className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
         style={{ background: "rgba(196,168,240,0.2)", color: "rgba(196,168,240,1)" }}
       >
-        Join with Spotify →
+        Request to join →
       </a>
 
       {divider("already approved?")}
 
-      {loginBtn("Log in with Spotify →")}
+      {loginBtn()}
     </div>
   );
 }
