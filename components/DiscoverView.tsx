@@ -20,7 +20,6 @@ const GENRES = [
   { label: "Latin", value: "latin" },
 ];
 
-// Curated nature GIF backgrounds (looping, no API needed)
 const NATURE_BGS = [
   "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbzBrM2R6dHVtN2NoMGZ6ZDB5dno3cXk1anMxcHZwbm53ZHdkMmRpZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnqM/giphy.gif",
   "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzYzOGU2YnpsMGxvcXU1cHp3am94NTFwOGVydGhqcWoxeWs4cjNrNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7btQ8jDTPGDMDqSk/giphy.gif",
@@ -34,12 +33,15 @@ const NATURE_BGS = [
   "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2NiMjdpNjQyZ3U1Z3p5dDlhM2V4bzc0NHBqd25qazM5YzZncjNuayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlBO7eyXzSZkJri/giphy.gif",
 ];
 
+type Phase = "prompt" | "cards";
+
 export function DiscoverView({
   accessToken,
 }: {
   accessToken: string;
   friendNames: Record<string, string>;
 }) {
+  const [phase, setPhase] = useState<Phase>("prompt");
   const [genre, setGenre] = useState("anything");
   const [pool, setPool] = useState<DiscoverTrack[]>([]);
   const [index, setIndex] = useState(0);
@@ -67,10 +69,6 @@ export function DiscoverView({
     }
   }, []);
 
-  useEffect(() => {
-    fetchPool(genre);
-  }, [genre, fetchPool]);
-
   const current = pool[index] ?? null;
 
   // Auto-play when card changes and player is ready
@@ -81,6 +79,18 @@ export function DiscoverView({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, playerState.isReady]);
+
+  function handleSubmit() {
+    setPhase("cards");
+    fetchPool(genre);
+  }
+
+  function handleChangeGenre() {
+    setPhase("prompt");
+    setPool([]);
+    setDone(false);
+    setIndex(0);
+  }
 
   function advance() {
     if (index + 1 >= pool.length) setDone(true);
@@ -109,33 +119,86 @@ export function DiscoverView({
     advance();
   }
 
+  const genreLabel = GENRES.find((g) => g.value === genre)?.label ?? genre;
+
+  // ── Prompt phase ──────────────────────────────────────────────────────────
+  if (phase === "prompt") {
+    return (
+      <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--background)" }}>
+        <header
+          className="relative z-20 px-6 py-4 flex items-center justify-between"
+          style={{ borderBottom: "1px solid rgba(196,168,240,0.1)" }}
+        >
+          <a href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors text-sm">← back</a>
+          <span className="text-white/60 text-sm font-medium tracking-widest uppercase">Discover</span>
+          <div className="w-12" />
+        </header>
+
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="w-full max-w-sm">
+            <div
+              className="rounded-2xl p-6 backdrop-blur-sm"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <p className="text-white/35 text-xs font-medium tracking-widest uppercase mb-5">
+                What are you looking for?
+              </p>
+
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-white text-2xl font-semibold">Recommend me</span>
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    className="appearance-none bg-white/10 hover:bg-white/15 transition-colors text-white text-2xl font-semibold rounded-xl pl-3 pr-7 py-0.5 cursor-pointer outline-none"
+                    style={{ WebkitAppearance: "none", border: "1px solid rgba(255,255,255,0.1)" }}
+                  >
+                    {GENRES.map((g) => (
+                      <option key={g.value} value={g.value} className="bg-neutral-900 text-white text-base">
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-xs">▾</span>
+                </div>
+                <span className="text-white text-2xl font-semibold">music</span>
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                className="mt-6 w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90"
+                style={{ background: "rgba(196,168,240,0.18)", color: "rgba(196,168,240,0.9)" }}
+              >
+                Let&apos;s go →
+              </button>
+            </div>
+
+            <p className="text-white/20 text-xs text-center mt-4">
+              Songs your friends have liked
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Cards phase ───────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen">
-      {/* Header */}
-      <header className="relative z-20 px-6 py-4 flex items-center justify-between"
-        style={{ borderBottom: "1px solid rgba(196,168,240,0.1)" }}>
+      <header
+        className="relative z-20 px-6 py-4 flex items-center justify-between"
+        style={{ borderBottom: "1px solid rgba(196,168,240,0.1)" }}
+      >
         <a href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors text-sm">← back</a>
         <span className="text-white/60 text-sm font-medium tracking-widest uppercase">Discover</span>
-        <div className="w-12" />
+        <button
+          onClick={handleChangeGenre}
+          className="text-xs px-3 py-1 rounded-full transition-colors hover:opacity-80"
+          style={{ background: "rgba(196,168,240,0.12)", color: "rgba(196,168,240,0.7)" }}
+        >
+          {genreLabel} ×
+        </button>
       </header>
-
-      {/* Genre selector */}
-      <div className="relative z-20 px-4 py-3 flex gap-2 overflow-x-auto scrollbar-hide"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        {GENRES.map((g) => (
-          <button
-            key={g.value}
-            onClick={() => setGenre(g.value)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-              genre === g.value
-                ? "bg-white/20 text-white"
-                : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/70"
-            }`}
-          >
-            {g.label}
-          </button>
-        ))}
-      </div>
 
       {/* Card area */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
@@ -164,14 +227,23 @@ export function DiscoverView({
             <p className="text-4xl mb-4">🎵</p>
             <p className="text-white text-lg font-semibold">You&apos;re all caught up</p>
             <p className="text-white/40 text-sm mt-2">
-              No more songs to discover right now.<br />Check back after your friends listen to more music.
+              No more {genreLabel !== "Anything" ? genreLabel + " " : ""}songs to discover right now.
             </p>
-            <button
-              onClick={() => fetchPool(genre)}
-              className="mt-6 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm transition-colors"
-            >
-              Refresh
-            </button>
+            <div className="flex gap-3 justify-center mt-6">
+              <button
+                onClick={() => fetchPool(genre)}
+                className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm transition-colors"
+              >
+                Refresh
+              </button>
+              <button
+                onClick={handleChangeGenre}
+                className="px-5 py-2.5 rounded-xl text-sm transition-colors hover:opacity-80"
+                style={{ background: "rgba(196,168,240,0.12)", color: "rgba(196,168,240,0.7)" }}
+              >
+                Change genre
+              </button>
+            </div>
           </div>
         )}
 
@@ -216,7 +288,6 @@ export function DiscoverView({
 
             {/* Controls */}
             <div className="flex items-center gap-6 mt-2">
-              {/* Skip */}
               <button
                 onClick={handleSkip}
                 className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center transition-all active:scale-95"
@@ -224,7 +295,6 @@ export function DiscoverView({
                 <span className="text-white/60 text-xl">✕</span>
               </button>
 
-              {/* Play/pause */}
               <button
                 onClick={togglePlay}
                 disabled={!playerState.isReady}
@@ -235,7 +305,6 @@ export function DiscoverView({
                 </span>
               </button>
 
-              {/* Like */}
               <button
                 onClick={handleLike}
                 disabled={liking}

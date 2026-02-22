@@ -57,6 +57,10 @@ export async function upsertUser(
   };
 
   const newRecord: UserRecord = {
+    // Preserve fields that upsertUser doesn't manage
+    friendIds: existing?.friendIds,
+    likedTracks: existing?.likedTracks,
+    skippedTrackIds: existing?.skippedTrackIds,
     ...record,
     signatureHistory: cleanHistory(merged),
   };
