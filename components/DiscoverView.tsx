@@ -149,7 +149,7 @@ export function DiscoverView({
       fetch("/api/discover/skip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackId: current.id }),
+        body: JSON.stringify({ trackId: current.id, track: current }),
       }).catch(() => {});
     }
 

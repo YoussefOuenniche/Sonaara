@@ -1,18 +1,18 @@
 "use client";
 
-export function VinylLogo({ size = 88 }: { size?: number }) {
+export function VinylLogo({ size = 88, animated = true }: { size?: number; animated?: boolean }) {
   return (
     <div
       className="relative flex items-center justify-center flex-shrink-0"
       style={{ width: size, height: size }}
     >
       {/* Sonar ping rings — centered on the vinyl */}
-      <div className="sonar-ring" />
-      <div className="sonar-ring sonar-ring-2" />
-      <div className="sonar-ring sonar-ring-3" />
+      {animated && <div className="sonar-ring" />}
+      {animated && <div className="sonar-ring sonar-ring-2" />}
+      {animated && <div className="sonar-ring sonar-ring-3" />}
 
       {/* Spinning vinyl record */}
-      <div className="vinyl-spin relative z-10">
+      <div className={animated ? "vinyl-spin relative z-10" : "relative z-10"}>
         <svg
           width={size}
           height={size}

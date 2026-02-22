@@ -18,7 +18,8 @@ export interface UserRecord {
   signatureHistory: Record<string, Signature | null>; // "YYYY-MM-DD" → Signature
   friendIds?: string[]; // persisted friend list
   likedTracks?: DiscoverTrack[]; // cached liked songs for discover pool
-  skippedTrackIds?: string[]; // tracks skipped in discover, don't show again
+  skippedTrackIds?: string[]; // track IDs skipped in discover (for fast Set lookup)
+  skippedTracks?: DiscoverTrack[]; // full skipped track objects (for Songs tab display)
   refreshToken?: string; // Spotify refresh token — used by daily cron
   timezone?: string; // IANA timezone string, e.g. "America/New_York"
 }
@@ -63,6 +64,7 @@ export async function upsertUser(
     friendIds: existing?.friendIds,
     likedTracks: existing?.likedTracks,
     skippedTrackIds: existing?.skippedTrackIds,
+    skippedTracks: existing?.skippedTracks,
     refreshToken: existing?.refreshToken,
     timezone: existing?.timezone,
     ...record,
@@ -128,9 +130,33 @@ export async function setLikedTracks(userId: string, likedTracks: DiscoverTrack[
   await redis.set(`user:${userId}`, { ...existing, likedTracks });
 }
 
-export async function addSkippedTrack(userId: string, trackId: string): Promise<void> {
+export async function addSkippedTrack(userId: string, trackId: string, track?: DiscoverTrack): Promise<void> {
   const existing = await redis.get<UserRecord>(`user:${userId}`);
   if (!existing) return;
-  const skipped = Array.from(new Set([...(existing.skippedTrackIds ?? []), trackId]));
-  await redis.set(`user:${userId}`, { ...existing, skippedTrackIds: skipped });
+  const skippedIds = Array.from(new Set([...(existing.skippedTrackIds ?? []), trackId]));
+  const skippedTracks = existing.skippedTracks ?? [];
+  const alreadyFull = skippedTracks.some((t) => t.id === trackId);
+  const newSkippedTracks = track && !alreadyFull
+    ? [...skippedTracks, { ...track, likedByUserIds: [], likedByNames: [] }]
+    : skippedTracks;
+  await redis.set(`user:${userId}`, { ...existing, skippedTrackIds: skippedIds, skippedTracks: newSkippedTracks });
+}
+
+export async function removeSkippedTrack(userId: string, trackId: string): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  await redis.set(`user:${userId}`, {
+    ...existing,
+    skippedTrackIds: (existing.skippedTrackIds ?? []).filter((id) => id !== trackId),
+    skippedTracks: (existing.skippedTracks ?? []).filter((t) => t.id !== trackId),
+  });
+}
+
+export async function removeLikedTrack(userId: string, trackId: string): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (!existing) return;
+  await redis.set(`user:${userId}`, {
+    ...existing,
+    likedTracks: (existing.likedTracks ?? []).filter((t) => t.id !== trackId),
+  });
 }
