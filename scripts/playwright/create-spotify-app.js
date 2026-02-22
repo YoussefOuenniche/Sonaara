@@ -49,8 +49,32 @@ async function postWebhook(body) {
     await page.fill("#login-password, input[name='password']", PASSWORD);
     await page.click("#login-button, button[type='submit']");
 
-    // Wait for dashboard
-    await page.waitForURL("**/dashboard**", { timeout: 20000 });
+    // Wait for navigation to settle after login
+    await page.waitForLoadState("networkidle", { timeout: 20000 });
+
+    // Handle Developer Terms of Service — shown the first time a user visits the dev portal
+    if (!page.url().includes("/dashboard")) {
+      console.log("TOS or consent page detected at:", page.url());
+
+      // Check all required checkboxes (ToS + age verification etc.)
+      const checkboxes = page.locator('input[type="checkbox"]');
+      const checkboxCount = await checkboxes.count();
+      for (let i = 0; i < checkboxCount; i++) {
+        await checkboxes.nth(i).check().catch(() => {});
+      }
+
+      // Click Accept / Agree
+      const acceptBtn = page
+        .locator('button:has-text("Accept"), button:has-text("Agree"), button:has-text("I agree"), button[type="submit"]')
+        .first();
+      if (await acceptBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await acceptBtn.click();
+        await page.waitForLoadState("networkidle", { timeout: 15000 });
+      }
+    }
+
+    // Confirm we're on the dashboard
+    await page.waitForURL("**/dashboard**", { timeout: 15000 });
 
     // ── Create App ───────────────────────────────────────────────────────────
     await page.goto("https://developer.spotify.com/dashboard", { waitUntil: "networkidle" });
