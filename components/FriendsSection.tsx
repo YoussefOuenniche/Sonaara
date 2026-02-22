@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 
 import type { UserRecord } from "@/lib/store";
@@ -145,8 +146,8 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
         </div>
       )}
 
-      {/* Add-friend modal */}
-      {showModal && (
+      {/* Add-friend modal — rendered via portal to escape parent stacking context */}
+      {showModal && createPortal(
         <>
           {/* Backdrop */}
           <div
@@ -199,7 +200,8 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
             </div>
             {error && <p className="text-red-400/70 text-xs mb-3">{error}</p>}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </section>
   );
