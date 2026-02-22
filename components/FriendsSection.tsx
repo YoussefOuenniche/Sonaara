@@ -107,13 +107,22 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
       {/* Header row */}
       <div className="flex items-center justify-between">
         <h2 className="text-white/40 text-xs font-medium tracking-widest uppercase">Friends</h2>
-        <button
-          onClick={() => { setShowModal(true); setError(null); }}
-          className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
-          style={{ background: "rgba(196,168,240,0.1)", color: "rgba(196,168,240,0.7)" }}
-        >
-          + Add friend
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={copyId}
+            className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}
+          >
+            {copied ? "Copied ✓" : "Copy my ID"}
+          </button>
+          <button
+            onClick={() => { setShowModal(true); setError(null); }}
+            className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            style={{ background: "rgba(196,168,240,0.1)", color: "rgba(196,168,240,0.7)" }}
+          >
+            + Add friend
+          </button>
+        </div>
       </div>
 
       {/* Friend cards */}
