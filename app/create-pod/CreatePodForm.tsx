@@ -9,9 +9,7 @@ export function CreatePodForm({ userEmail }: { userEmail: string }) {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [podId, setPodId] = useState<string | null>(null);
-  const [joinLink, setJoinLink] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [copied, setCopied] = useState(false);
 
   // Poll for pod status
   useEffect(() => {
@@ -22,7 +20,6 @@ export function CreatePodForm({ userEmail }: { userEmail: string }) {
       const data = await res.json() as { status: string; errorMessage?: string };
       if (data.status === "ready") {
         setStatus("ready");
-        setJoinLink(`${window.location.origin}/join/${podId}`);
         clearInterval(interval);
       } else if (data.status === "error") {
         setStatus("error");
@@ -56,13 +53,6 @@ export function CreatePodForm({ userEmail }: { userEmail: string }) {
     setStatus("polling");
   }
 
-  function copyLink() {
-    if (!joinLink) return;
-    navigator.clipboard.writeText(joinLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   const inputStyle = {
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.1)",
@@ -81,29 +71,21 @@ export function CreatePodForm({ userEmail }: { userEmail: string }) {
     );
   }
 
-  if (status === "ready" && joinLink) {
+  if (status === "ready" && podId) {
     return (
-      <div className="rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <p className="text-white font-semibold mb-1">Pod created!</p>
-        <p className="text-white/40 text-sm mb-5">Share this link with your friends to invite them.</p>
-        <div
-          className="rounded-xl px-4 py-3 text-sm font-mono break-all mb-3"
-          style={{ background: "rgba(196,168,240,0.08)", color: "rgba(196,168,240,0.9)", border: "1px solid rgba(196,168,240,0.15)" }}
-        >
-          {joinLink}
+      <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="text-center">
+          <p className="text-white font-semibold mb-1">Pod ready!</p>
+          <p className="text-white/40 text-sm">
+            Log in to your pod — you&apos;ll find the invite link in your dashboard.
+          </p>
         </div>
-        <button
-          onClick={copyLink}
-          className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide transition-all active:scale-[0.97]"
+        <a
+          href={`/api/auth/login?pod=${podId}`}
+          className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
           style={{ background: "rgba(196,168,240,0.2)", color: "rgba(196,168,240,1)" }}
         >
-          {copied ? "Copied!" : "Copy invite link"}
-        </button>
-        <a
-          href="/dashboard"
-          className="block text-center text-white/30 text-xs mt-4 hover:text-white/50 transition-colors"
-        >
-          Go to dashboard →
+          Log in to your pod →
         </a>
       </div>
     );
