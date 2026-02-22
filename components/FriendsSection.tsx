@@ -217,6 +217,7 @@ function FriendCard({
   loading: boolean;
   onRemove: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   if (loading) {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse">
@@ -249,13 +250,14 @@ function FriendCard({
       <div className="flex items-center gap-3">
         {/* Avatar */}
         <div className="relative w-10 h-10 flex-shrink-0">
-          {data.userImage ? (
+          {data.userImage && !imgError ? (
             <Image
               src={data.userImage}
               alt={data.userName}
               fill
               className="rounded-full object-cover"
               sizes="40px"
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg">
