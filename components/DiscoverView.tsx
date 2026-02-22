@@ -41,18 +41,18 @@ const GENRES = [
   { label: "K-Pop", value: "k-pop" },
 ];
 
-// Music & nature aesthetic GIFs
+// Music & nature aesthetic GIFs — mix of confirmed-working + curated
 const BG_GIFS = [
-  "https://media.giphy.com/media/l0MYGkS6RNMiDPVpe/giphy.gif",           // vinyl record spinning
-  "https://media.giphy.com/media/3oKIPEqDGUULpEU0aQ/giphy.gif",          // galaxy / stars
-  "https://media.giphy.com/media/3ohzdFRpEfxr9smMQ8/giphy.gif",          // fireplace
-  "https://media.giphy.com/media/26BRBupa6nRXMGBG8/giphy.gif",           // concert lights
-  "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbzBrM2R6dHVtN2NoMGZ6ZDB5dno3cXk1anMxcHZwbm53ZHdkMmRpZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnqM/giphy.gif",   // ocean
-  "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzYzOGU2YnpsMGxvcXU1cHp3am94NTFwOGVydGhqcWoxeWs4cjNrNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7btQ8jDTPGDMDqSk/giphy.gif",  // forest
-  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNm55bHlxMDFkaWJnb3F0ajJibG80Z2E1aGowZHZlcTN4bDQ1eGl2eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohs4xsq0oEhqnV6yk/giphy.gif",  // rain
-  "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGd4dWZkdmFiNHJlenQxbHJtbzJqMmoxdDRmMGZsMHFzeHE5MHNwciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT9IgG50Lg7rusRgqU/giphy.gif",  // mountains
-  "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmQ3MzZhcGZxOGlxMjhiZG1paDVvMHdnbXZ4cGZkdHQ3NHp6czM2biZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3og0INyCmHlNylks9O/giphy.gif",  // misty landscape
-  "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm9zNmNxdHIzZnEybzlqNGRkcG4xaTF1aGFndHkxZTM5emN4bzZxaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYGb1LuZ3n7dRnO/giphy.gif",  // night nature
+  "https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif",           // vinyl record
+  "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",          // galaxy / stars
+  "https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif",          // concert stage lights
+  "https://media.giphy.com/media/3o6Zt4HU9uwXmXSAuI/giphy.gif",          // fireplace
+  "https://media.giphy.com/media/3oEjI5VtIhHvK37WYo/giphy.gif",          // piano keys
+  "https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.gif",           // mountain landscape
+  "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif",            // misty forest
+  "https://media.giphy.com/media/3o7TKwxYkeW0ZvTqsU/giphy.gif",          // rain on glass
+  "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbzBrM2R6dHVtN2NoMGZ6ZDB5dno3cXk1anMxcHZwbm53ZHdkMmRpZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnqM/giphy.gif",   // ocean waves
+  "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzYzOGU2YnpsMGxvcXU1cHp3am94NTFwOGVydGhqcWoxeWs4cjNrNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7btQ8jDTPGDMDqSk/giphy.gif",  // deep forest
 ];
 
 type Phase = "prompt" | "cards";
