@@ -149,33 +149,7 @@ export default async function DashboardPage() {
         }}
       />
 
-      <header
-        className="relative z-10 px-6 py-4"
-        style={{ borderBottom: "1px solid rgba(196,168,240,0.1)" }}
-      >
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <VinylLogo size={32} />
-            <div>
-              <span className="font-bold text-lg tracking-tight block leading-none" style={{ color: "var(--foreground)" }}>
-                sonaara
-              </span>
-              <span className="text-[10px] tracking-widest uppercase" style={{ color: "var(--lilac)", opacity: 0.4 }}>
-                home
-              </span>
-            </div>
-          </div>
-          <a
-            href="/api/auth/logout"
-            className="text-xs transition-opacity hover:opacity-60"
-            style={{ color: "var(--lilac)", opacity: 0.35 }}
-          >
-            Sign out
-          </a>
-        </div>
-      </header>
-
-      <main className="relative z-10 max-w-md mx-auto px-6 py-8 pb-28 space-y-5">
+      <main className="relative z-10 max-w-md mx-auto px-6 pt-10 pb-28 space-y-5">
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
             Hey, {displayName}
@@ -214,6 +188,23 @@ export default async function DashboardPage() {
             </p>
           </div>
         )}
+
+        {/* 4. Footer — logo + sign out */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center gap-2">
+            <VinylLogo size={24} />
+            <span className="font-bold text-sm tracking-tight" style={{ color: "var(--foreground)", opacity: 0.35 }}>
+              sonaara
+            </span>
+          </div>
+          <a
+            href="/api/auth/logout"
+            className="text-xs transition-opacity hover:opacity-60"
+            style={{ color: "var(--lilac)", opacity: 0.3 }}
+          >
+            Sign out
+          </a>
+        </div>
       </main>
 
       <BottomNav active="home" />

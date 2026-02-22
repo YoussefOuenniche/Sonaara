@@ -48,8 +48,9 @@ export function SignatureCard({
 
   const [currentKey, setCurrentKey] = useState(latestKey);
   const [revealed, setRevealed] = useState(false);
+  const [showTracks, setShowTracks] = useState(false);
 
-  useEffect(() => { setRevealed(false); }, [currentKey]);
+  useEffect(() => { setRevealed(false); setShowTracks(false); }, [currentKey]);
 
   const currentIdx = sortedKeys.indexOf(currentKey);
   const currentSig = allEntries[currentKey] ?? null;
@@ -221,9 +222,23 @@ export function SignatureCard({
         </div>
       )}
 
-      {/* ── Day track list ── */}
+      {/* ── Day track list (collapsed by default) ── */}
       {dayTracks.length > 0 && (
-        <DayTrackList key={currentKey} tracks={dayTracks} />
+        <>
+          <button
+            onClick={() => setShowTracks((s) => !s)}
+            className="w-full flex items-center justify-between mt-4 pt-4 text-xs transition-opacity hover:opacity-70"
+            style={{
+              borderTop: "1px solid rgba(196,168,240,0.1)",
+              color: "var(--lilac)",
+              opacity: 0.4,
+            }}
+          >
+            <span>{dayTracks.length} track{dayTracks.length === 1 ? "" : "s"} that day</span>
+            <span>{showTracks ? "↑ hide" : "↓ show"}</span>
+          </button>
+          {showTracks && <DayTrackList key={currentKey} tracks={dayTracks} />}
+        </>
       )}
     </div>
   );
@@ -262,11 +277,7 @@ function DayTrackList({ tracks }: { tracks: Track[] }) {
   const shown = expanded ? tracks : tracks.slice(0, 5);
 
   return (
-    <div className="mt-4 space-y-1.5" style={{ borderTop: "1px solid rgba(196,168,240,0.1)", paddingTop: "16px" }}>
-      <p className="text-xs mb-2" style={{ color: "var(--lilac)", opacity: 0.35 }}>
-        {tracks.length} track{tracks.length === 1 ? "" : "s"} that day
-      </p>
-
+    <div className="mt-2 space-y-1.5">
       {shown.map((track, i) => {
         const isPlaying = playingId === track.id;
         return (

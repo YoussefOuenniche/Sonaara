@@ -151,7 +151,17 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
             style={{ background: "rgba(18,12,32,0.98)", border: "1px solid rgba(255,255,255,0.1)", borderBottom: "none" }}
           >
             <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
-            <p className="text-white font-semibold text-lg mb-1">Add a friend</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-white font-semibold text-lg">Add a friend</p>
+              <button
+                onClick={() => { setShowModal(false); setError(null); setInput(""); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
             <p className="text-white/35 text-sm mb-5">Enter their Spotify user ID to see their Signature</p>
 
             <div className="flex gap-2 mb-3">
@@ -176,17 +186,18 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
             {error && <p className="text-red-400/70 text-xs mb-3">{error}</p>}
 
             {/* Your ID */}
-            <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-white/25 text-xs flex-1 truncate">
-                Your ID: <span className="font-mono text-white/40">{currentUserId}</span>
-              </p>
-              <button
-                onClick={copyId}
-                className="text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
-              >
-                {copied ? "Copied ✓" : "Copy"}
-              </button>
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-white/40 text-xs mb-2">Your Spotify ID</p>
+              <div className="flex items-center gap-2">
+                <p className="font-mono text-white/55 text-xs flex-1 truncate">{currentUserId}</p>
+                <button
+                  onClick={copyId}
+                  className="text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+                  style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}
+                >
+                  {copied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
             </div>
           </div>
         </>
