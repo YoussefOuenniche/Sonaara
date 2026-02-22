@@ -258,8 +258,8 @@ function FriendCard({
               sizes="40px"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-base text-white/50">
-              {data.userName[0]?.toUpperCase() ?? "?"}
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg">
+              🎵
             </div>
           )}
         </div>
