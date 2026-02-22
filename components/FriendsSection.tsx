@@ -198,21 +198,6 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
               </button>
             </div>
             {error && <p className="text-red-400/70 text-xs mb-3">{error}</p>}
-
-            {/* Your ID */}
-            <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-white/40 text-xs mb-2">Your Spotify ID</p>
-              <div className="flex items-center gap-2">
-                <p className="font-mono text-white/55 text-xs flex-1 truncate">{currentUserId}</p>
-                <button
-                  onClick={copyId}
-                  className="text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                  style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}
-                >
-                  {copied ? "Copied ✓" : "Copy"}
-                </button>
-              </div>
-            </div>
           </div>
         </>
       )}
