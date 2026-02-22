@@ -220,17 +220,7 @@ function FriendCard({
 }) {
   const [imgError, setImgError] = useState(false);
   if (loading) {
-    return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/10 flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3.5 bg-white/10 rounded w-1/3" />
-            <div className="h-3 bg-white/5 rounded w-1/2" />
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!data) {
