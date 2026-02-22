@@ -34,6 +34,9 @@ export interface PlayerState {
 
 export function useSpotifyPlayer(accessToken: string | null) {
   const playerRef = useRef<SpotifyPlayer | null>(null);
+  // Use a ref so playTrack always reads the latest deviceId without stale closures
+  const deviceIdRef = useRef<string | null>(null);
+
   const [state, setState] = useState<PlayerState>({
     deviceId: null,
     isPlaying: false,
@@ -62,10 +65,12 @@ export function useSpotifyPlayer(accessToken: string | null) {
 
       player.addListener("ready", (data) => {
         const { device_id } = data as { device_id: string };
+        deviceIdRef.current = device_id;
         setState((s) => ({ ...s, deviceId: device_id, isReady: true, error: null }));
       });
 
       player.addListener("not_ready", () => {
+        deviceIdRef.current = null;
         setState((s) => ({ ...s, isReady: false, deviceId: null }));
       });
 
@@ -81,7 +86,7 @@ export function useSpotifyPlayer(accessToken: string | null) {
 
       player.addListener("authentication_error", (data) => {
         const e = data as { message: string };
-        setState((s) => ({ ...s, error: e.message }));
+        setState((s) => ({ ...s, error: `Auth error — try signing out and back in (${e.message})` }));
       });
 
       player.addListener("account_error", () => {
@@ -100,12 +105,14 @@ export function useSpotifyPlayer(accessToken: string | null) {
 
     return () => {
       playerRef.current?.disconnect();
+      deviceIdRef.current = null;
     };
   }, [accessToken]);
 
   async function playTrack(uri: string) {
-    if (!state.deviceId || !accessToken) return;
-    await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${state.deviceId}`, {
+    const deviceId = deviceIdRef.current;
+    if (!deviceId || !accessToken) return;
+    const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -113,7 +120,13 @@ export function useSpotifyPlayer(accessToken: string | null) {
       },
       body: JSON.stringify({ uris: [uri] }),
     });
-    setState((s) => ({ ...s, isPlaying: true }));
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+      const msg = body?.error?.message ?? `Playback failed (${res.status})`;
+      setState((s) => ({ ...s, error: msg }));
+      return;
+    }
+    setState((s) => ({ ...s, isPlaying: true, error: null }));
   }
 
   async function togglePlay() {
