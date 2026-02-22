@@ -1,4 +1,5 @@
 import { VinylLogo } from "@/components/VinylLogo";
+import { BottomNav } from "@/components/BottomNav";
 
 export default function DashboardLoading() {
   return (
@@ -13,6 +14,7 @@ export default function DashboardLoading() {
       >
         sonaara
       </span>
+      <BottomNav active="home" />
     </div>
   );
 }
