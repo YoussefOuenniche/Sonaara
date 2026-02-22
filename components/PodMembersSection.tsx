@@ -131,7 +131,7 @@ export function PodMembersSection({
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-xs font-medium tracking-widest uppercase" style={{ color: "var(--lilac)", opacity: 0.5 }}>
-            Pod
+            Pod · {members.length}/4
           </p>
           <p className="text-sm font-semibold mt-0.5" style={{ color: "var(--foreground)" }}>
             {pod.podName}

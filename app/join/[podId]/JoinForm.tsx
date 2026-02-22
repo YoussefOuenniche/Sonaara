@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function JoinForm({ podId, podName }: { podId: string; podName: string }) {
+export function JoinForm({ podId, podName, isFull }: { podId: string; podName: string; isFull: boolean }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -19,12 +19,42 @@ export function JoinForm({ podId, podName }: { podId: string; podName: string })
     }).catch(() => null);
 
     if (!res?.ok) {
+      const data = await res?.json().catch(() => ({})) as { error?: string };
       setStatus("error");
-      setErrorMsg("Something went wrong. Please try again.");
+      setErrorMsg(data.error === "Pod is full" ? "This pod is full." : "Something went wrong. Please try again.");
       return;
     }
 
     setStatus("done");
+  }
+
+  // Pod is full — only show login for existing members
+  if (isFull) {
+    return (
+      <div
+        className="rounded-2xl p-6 flex flex-col gap-4"
+        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+      >
+        <div className="text-center">
+          <p className="text-white/60 font-semibold mb-1">Pod is full</p>
+          <p className="text-white/30 text-sm">{podName} has reached its member limit.</p>
+        </div>
+
+        <div className="flex items-center gap-3 py-1">
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>already a member?</span>
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </div>
+
+        <a
+          href={`/api/auth/login?pod=${podId}`}
+          className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
+          style={{ background: "rgba(196,168,240,0.15)", color: "rgba(196,168,240,0.8)" }}
+        >
+          Log in with Spotify →
+        </a>
+      </div>
+    );
   }
 
   if (status === "done") {

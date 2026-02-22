@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPod, addPendingEmail } from "@/lib/pods";
+import { getPod, addPendingEmail, POD_MAX_MEMBERS } from "@/lib/pods";
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +10,10 @@ export async function POST(
 
   if (!pod || pod.status !== "ready") {
     return NextResponse.json({ error: "Pod not found or not ready" }, { status: 404 });
+  }
+
+  if (pod.memberIds.length >= POD_MAX_MEMBERS) {
+    return NextResponse.json({ error: "Pod is full" }, { status: 409 });
   }
 
   const { email } = await request.json() as { email: string };

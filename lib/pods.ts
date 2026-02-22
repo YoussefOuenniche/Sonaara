@@ -20,10 +20,13 @@ export async function updatePod(podId: string, partial: Partial<Pod>): Promise<v
   await redis.set(`pod:${podId}`, { ...existing, ...partial });
 }
 
+export const POD_MAX_MEMBERS = 5; // admin + 4 others
+
 export async function addPodMember(podId: string, userId: string): Promise<void> {
   const existing = await redis.get<Pod>(`pod:${podId}`);
   if (!existing) return;
   if (existing.memberIds.includes(userId)) return;
+  if (existing.memberIds.length >= POD_MAX_MEMBERS) return; // cap reached
   await redis.set(`pod:${podId}`, {
     ...existing,
     memberIds: [...existing.memberIds, userId],
