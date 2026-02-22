@@ -139,25 +139,27 @@ export function PodMembersSection({
         </div>
       </div>
 
-      {/* Invite friends */}
-      <div
-        className="rounded-xl px-4 py-3 mb-4 flex items-center justify-between gap-3"
-        style={{ background: "rgba(196,168,240,0.06)", border: "1px solid rgba(196,168,240,0.1)" }}
-      >
-        <div className="min-w-0">
-          <p className="text-xs mb-1" style={{ color: "rgba(196,168,240,0.45)" }}>Invite friends</p>
-          <p className="text-sm font-mono font-semibold tracking-wider truncate" style={{ color: "rgba(196,168,240,0.85)" }}>
-            {pod.podId}
-          </p>
-        </div>
-        <button
-          onClick={copyJoinLink}
-          className="text-xs px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80"
-          style={{ background: "rgba(196,168,240,0.12)", color: "rgba(196,168,240,0.7)" }}
+      {/* Invite friends — admin only */}
+      {isAdmin && (
+        <div
+          className="rounded-xl px-4 py-3 mb-4 flex items-center justify-between gap-3"
+          style={{ background: "rgba(196,168,240,0.06)", border: "1px solid rgba(196,168,240,0.1)" }}
         >
-          {copied ? "Copied!" : "Copy link"}
-        </button>
-      </div>
+          <div className="min-w-0">
+            <p className="text-xs mb-1" style={{ color: "rgba(196,168,240,0.45)" }}>Invite friends</p>
+            <p className="text-sm font-mono font-semibold tracking-wider truncate" style={{ color: "rgba(196,168,240,0.85)" }}>
+              {pod.podId}
+            </p>
+          </div>
+          <button
+            onClick={copyJoinLink}
+            className="text-xs px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80"
+            style={{ background: "rgba(196,168,240,0.12)", color: "rgba(196,168,240,0.7)" }}
+          >
+            {copied ? "Copied!" : "Copy link"}
+          </button>
+        </div>
+      )}
 
       {/* Member list */}
       {members.length === 0 ? (
