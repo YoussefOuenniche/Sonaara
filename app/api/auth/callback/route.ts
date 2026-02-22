@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { addToUserIndex, storeUserRefreshToken } from "@/lib/store";
-import { getPod, addPodMember } from "@/lib/pods";
+import { getPod, addPodMember, addPendingEmail, storeJoinEmailUserId } from "@/lib/pods";
 import { decrypt } from "@/lib/encryption";
 
 export async function GET(request: NextRequest) {
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state") ?? "";
   const podId = state.startsWith("pod:") ? state.slice(4) : null;
   const nextPath = state.startsWith("next:") ? state.slice(5) : null;
+  const joinPodId = state.startsWith("join:") ? state.slice(5) : null;
 
   // Resolve credentials: pod credentials if pod login, else default app credentials
   let clientId = process.env.SPOTIFY_CLIENT_ID!;
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   if (podId) {
     pod = await getPod(podId).catch(() => null);
-    if (pod?.status === "ready") {
+    if (pod?.status === "ready" && pod.clientId) {
       clientId = pod.clientId;
       clientSecret = decrypt(pod.clientSecretEncrypted);
     }
@@ -76,14 +77,22 @@ export async function GET(request: NextRequest) {
     ]).catch(() => {});
   }
 
-  // Add user to pod member list
+  // Add user to pod member list (full pod login)
   if (podId && pod && profile.id) {
     await addPodMember(podId, profile.id).catch(() => {});
   }
 
+  // Join intent: auto-add email to pending list, redirect back to join page
+  if (joinPodId && profile.email) {
+    await Promise.all([
+      addPendingEmail(joinPodId, profile.email.toLowerCase()),
+      storeJoinEmailUserId(joinPodId, profile.email.toLowerCase(), profile.id),
+    ]).catch(() => {});
+  }
+
   // Use meta-refresh so the Set-Cookie header lands on this response
   // before the browser navigates — a plain redirect loses the cookie.
-  const destination = nextPath ? `/${nextPath}` : "/dashboard";
+  const destination = nextPath ? `/${nextPath}` : joinPodId ? `/join/${joinPodId}?pending=1` : "/dashboard";
   return new NextResponse(
     `<!doctype html><html><head>
       <meta http-equiv="refresh" content="0; url=${destination}">

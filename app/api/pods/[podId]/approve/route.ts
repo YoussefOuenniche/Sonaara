@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { getPod, getPendingEmails } from "@/lib/pods";
+import { getPod, getPendingEmails, clearPendingEmails, addPodMember, getJoinEmailUserId } from "@/lib/pods";
 
 async function triggerAllowlistWorkflow(podId: string, emails: string[]) {
   const owner = process.env.GITHUB_OWNER!;
@@ -20,19 +20,12 @@ async function triggerAllowlistWorkflow(podId: string, emails: string[]) {
       },
       body: JSON.stringify({
         ref: "feature/pod-system",
-        inputs: {
-          podId,
-          emails: emails.join(","),
-          webhookUrl: appUrl,
-        },
+        inputs: { podId, emails: emails.join(","), webhookUrl: appUrl },
       }),
     }
   );
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GitHub API error ${res.status}: ${text}`);
-  }
+  if (!res.ok) throw new Error(`GitHub API error ${res.status}`);
 }
 
 export async function POST(
@@ -47,9 +40,7 @@ export async function POST(
   const { podId } = await params;
   const pod = await getPod(podId);
 
-  if (!pod) {
-    return NextResponse.json({ error: "Pod not found" }, { status: 404 });
-  }
+  if (!pod) return NextResponse.json({ error: "Pod not found" }, { status: 404 });
   if (pod.adminUserId !== session.userId) {
     return NextResponse.json({ error: "Only the pod admin can approve members" }, { status: 403 });
   }
@@ -59,7 +50,23 @@ export async function POST(
     return NextResponse.json({ ok: true, emailsQueued: 0, message: "No pending emails" });
   }
 
-  await triggerAllowlistWorkflow(podId, pendingEmails);
+  // Look up Spotify userIds stored at join time and add them to pod members directly
+  const userIdLookups = await Promise.all(
+    pendingEmails.map((email) => getJoinEmailUserId(podId, email).catch(() => null))
+  );
+  await Promise.all(
+    userIdLookups
+      .filter((uid): uid is string => !!uid)
+      .map((uid) => addPodMember(podId, uid).catch(() => {}))
+  );
+
+  // Clear pending list so dashboard updates immediately
+  await clearPendingEmails(podId);
+
+  // Fire-and-forget: also trigger Spotify allowlist workflow for production pods
+  if (pod.clientId) {
+    triggerAllowlistWorkflow(podId, pendingEmails).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true, emailsQueued: pendingEmails.length });
 }

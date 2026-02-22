@@ -48,6 +48,15 @@ export async function addPendingEmail(podId: string, email: string): Promise<voi
   await redis.rpush(`pod:${podId}:pending`, email);
 }
 
+// Store email → userId so approve can directly add the user to memberIds
+export async function storeJoinEmailUserId(podId: string, email: string, userId: string): Promise<void> {
+  await redis.set(`pod:${podId}:email:${email}`, userId);
+}
+
+export async function getJoinEmailUserId(podId: string, email: string): Promise<string | null> {
+  return redis.get<string>(`pod:${podId}:email:${email}`);
+}
+
 export async function getPendingEmails(podId: string): Promise<string[]> {
   return redis.lrange<string>(`pod:${podId}:pending`, 0, -1);
 }
