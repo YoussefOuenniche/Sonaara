@@ -30,18 +30,29 @@ export function JoinForm({ podId, podName }: { podId: string; podName: string })
   if (status === "done") {
     return (
       <div
-        className="rounded-2xl p-6 text-center"
+        className="rounded-2xl p-6 flex flex-col gap-4"
         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
       >
-        <p className="text-white font-semibold mb-2">Request sent!</p>
-        <p className="text-white/40 text-sm">
-          The {podName} admin will add your Spotify account to the pod. You&apos;ll be able to log in once approved.
-        </p>
+        <div className="text-center">
+          <p className="text-white font-semibold mb-2">Request sent!</p>
+          <p className="text-white/40 text-sm">
+            The {podName} admin will add your Spotify account to the allowlist.
+            Once approved, log in below.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 py-1">
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>once approved</span>
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </div>
+
         <a
-          href="/"
-          className="block text-center text-white/30 text-xs mt-5 hover:text-white/50 transition-colors"
+          href={`/api/auth/login?pod=${podId}`}
+          className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
+          style={{ background: "rgba(196,168,240,0.2)", color: "rgba(196,168,240,1)" }}
         >
-          Back to home →
+          Log in with Spotify →
         </a>
       </div>
     );
@@ -85,9 +96,23 @@ export function JoinForm({ podId, podName }: { podId: string; podName: string })
         {status === "submitting" ? "Sending…" : "Request to join →"}
       </button>
 
-      <p className="text-white/15 text-xs text-center">
-        The admin will add you to the Spotify allowlist. You&apos;ll connect your Spotify account after approval.
-      </p>
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+        <span className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>already approved?</span>
+        <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+      </div>
+
+      <a
+        href={`/api/auth/login?pod=${podId}`}
+        className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide text-center transition-all active:scale-[0.97] hover:opacity-90"
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          color: "rgba(255,255,255,0.45)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        Log in with Spotify →
+      </a>
     </form>
   );
 }
