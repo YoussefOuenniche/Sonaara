@@ -329,7 +329,16 @@ function DayTrackList({ tracks }: { tracks: Track[] }) {
                   color: "var(--lilac-light)",
                 }}
               >
-                {isPlaying ? "⏸" : "▶"}
+                {isPlaying ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                    <rect x="1" y="1" width="3" height="8" rx="1" />
+                    <rect x="6" y="1" width="3" height="8" rx="1" />
+                  </svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                    <path d="M2 1.5 L9 5 L2 8.5 Z" />
+                  </svg>
+                )}
               </button>
             ) : (
               <div className="w-6 h-6 flex-shrink-0" />
