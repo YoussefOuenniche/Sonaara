@@ -14,8 +14,14 @@ export function BottomNav({ active }: { active: "home" | "discover" }) {
       }}
     >
       <a href="/dashboard" className="flex flex-col items-center gap-1 group">
-        <div style={{ opacity: active === "home" ? 1 : 0.35 }} className="transition-opacity group-hover:opacity-70">
-          <VinylLogo size={28} />
+        <div
+          className="w-7 h-7 flex items-center justify-center transition-opacity"
+          style={{ opacity: active === "home" ? 1 : 0.35 }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="text-white/70" />
+            <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="text-white/70" />
+          </svg>
         </div>
         <span
           className="text-[10px] font-medium tracking-widest uppercase transition-colors"
@@ -26,14 +32,8 @@ export function BottomNav({ active }: { active: "home" | "discover" }) {
       </a>
 
       <a href="/discover" className="flex flex-col items-center gap-1 group">
-        <div
-          className="w-7 h-7 flex items-center justify-center transition-opacity"
-          style={{ opacity: active === "discover" ? 1 : 0.35 }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" className="text-white/60" />
-            <path d="M10 8l6 4-6 4V8z" fill="currentColor" className="text-white/60" />
-          </svg>
+        <div style={{ opacity: active === "discover" ? 1 : 0.35 }} className="transition-opacity group-hover:opacity-70">
+          <VinylLogo size={28} />
         </div>
         <span
           className="text-[10px] font-medium tracking-widest uppercase transition-colors"
