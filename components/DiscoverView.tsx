@@ -84,6 +84,9 @@ export function DiscoverView({
   const dragStartX = useRef(0);
   const SWIPE_THRESHOLD = 75;
 
+  // Card fade-in state
+  const [cardOpacity, setCardOpacity] = useState(1);
+
   // Button animation states
   const [heartAnim, setHeartAnim] = useState(false);
   const [skipAnim, setSkipAnim] = useState(false);
@@ -132,8 +135,10 @@ export function DiscoverView({
   }
 
   function advance() {
-    if (index + 1 >= pool.length) setDone(true);
-    else setIndex((i) => i + 1);
+    if (index + 1 >= pool.length) { setDone(true); return; }
+    setCardOpacity(0);
+    setIndex((i) => i + 1);
+    setTimeout(() => setCardOpacity(1), 40);
   }
 
   async function handleLike() {
@@ -220,7 +225,10 @@ export function DiscoverView({
       : exitDir === "left"
       ? "translateX(-130%) rotate(-20deg)"
       : `translateX(${dragOffset}px) rotate(${dragOffset * 0.06}deg)`,
-    transition: isDraggingRef.current ? "none" : "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)",
+    transition: isDraggingRef.current
+      ? "none"
+      : "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s ease",
+    opacity: cardOpacity,
     cursor: isDraggingRef.current ? "grabbing" : "grab",
     userSelect: "none",
     touchAction: "none",
@@ -367,9 +375,9 @@ export function DiscoverView({
         )}
 
         {loading && (
-          <div className="relative z-10 flex flex-col items-center gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />
-            <p className="text-white/40 text-sm">Finding songs…</p>
+          <div className="relative z-10 flex flex-col items-center gap-4">
+            <VinylLogo size={56} />
+            <span className="font-bold text-base tracking-tight" style={{ color: "var(--foreground)", opacity: 0.45 }}>sonaara</span>
           </div>
         )}
 
@@ -480,7 +488,16 @@ export function DiscoverView({
                   transform: playAnim ? "scale(0.92)" : "scale(1)",
                 }}
               >
-                <span className="text-white text-2xl">{playerState.isPlaying ? "⏸" : "▶"}</span>
+                {playerState.isPlaying ? (
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="white">
+                    <rect x="2" y="2" width="5" height="14" rx="1.5" />
+                    <rect x="11" y="2" width="5" height="14" rx="1.5" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="white">
+                    <path d="M4 2.5 L16 9 L4 15.5 Z" />
+                  </svg>
+                )}
               </button>
 
               {/* Like — pink */}
