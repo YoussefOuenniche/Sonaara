@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (!already) {
       await setLikedTracks(session.userId, [
         ...(user.likedTracks ?? []),
-        { ...track, likedByUserIds: [] },
+        { ...track, likedByUserIds: [], likedByNames: [] },
       ]);
     }
   }

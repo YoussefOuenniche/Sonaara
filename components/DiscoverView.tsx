@@ -140,37 +140,34 @@ export function DiscoverView({
               className="rounded-2xl p-6 backdrop-blur-sm"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
             >
-              <p className="text-white/35 text-xs font-medium tracking-widest uppercase mb-5">
-                What are you looking for?
-              </p>
-
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-white text-2xl font-semibold">Recommend me</span>
-                <div className="relative inline-flex items-center">
-                  <select
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    className="appearance-none bg-white/10 hover:bg-white/15 transition-colors text-white text-2xl font-semibold rounded-xl pl-3 pr-7 py-0.5 cursor-pointer outline-none"
-                    style={{ WebkitAppearance: "none", border: "1px solid rgba(255,255,255,0.1)" }}
-                  >
-                    {GENRES.map((g) => (
-                      <option key={g.value} value={g.value} className="bg-neutral-900 text-white text-base">
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-xs">▾</span>
-                </div>
-                <span className="text-white text-2xl font-semibold">music</span>
+              {/* Genre dropdown — hero element */}
+              <div className="relative mb-5">
+                <select
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  className="appearance-none w-full bg-white/8 hover:bg-white/12 transition-colors text-white text-2xl font-semibold rounded-xl pl-4 pr-10 py-3 cursor-pointer outline-none"
+                  style={{ WebkitAppearance: "none", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  {GENRES.map((g) => (
+                    <option key={g.value} value={g.value} className="bg-neutral-900 text-white text-base">
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40 text-sm">▾</span>
               </div>
 
-              <button
-                onClick={handleSubmit}
-                className="mt-6 w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90"
-                style={{ background: "rgba(196,168,240,0.18)", color: "rgba(196,168,240,0.9)" }}
-              >
-                Let&apos;s go →
-              </button>
+              {/* Action row */}
+              <div className="flex items-center justify-between">
+                <span className="text-white/50 text-sm">Recommend me</span>
+                <button
+                  onClick={handleSubmit}
+                  className="px-5 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.97] hover:opacity-90"
+                  style={{ background: "rgba(196,168,240,0.18)", color: "rgba(196,168,240,0.9)" }}
+                >
+                  → Go
+                </button>
+              </div>
             </div>
 
             <p className="text-white/20 text-xs text-center mt-4">
@@ -249,6 +246,23 @@ export function DiscoverView({
 
         {!loading && !done && current && (
           <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center">
+            {/* Liked by — above album art */}
+            {current.likedByNames.length > 0 && (
+              <div className="flex items-center gap-1.5 mb-4">
+                <span className="text-white/30 text-xs">♥</span>
+                <span className="text-white/40 text-xs">
+                  liked by{" "}
+                  <span className="text-white/60 font-medium">
+                    {current.likedByNames.length === 1
+                      ? current.likedByNames[0]
+                      : current.likedByNames.length === 2
+                      ? `${current.likedByNames[0]} & ${current.likedByNames[1]}`
+                      : `${current.likedByNames[0]} +${current.likedByNames.length - 1} others`}
+                  </span>
+                </span>
+              </div>
+            )}
+
             {/* Album art */}
             <div className="relative w-56 h-56 rounded-2xl overflow-hidden shadow-2xl mb-6">
               {current.albumImageUrl ? (
@@ -270,13 +284,6 @@ export function DiscoverView({
               <p className="text-white/60 text-sm mt-1">{current.artists.join(", ")}</p>
               <p className="text-white/30 text-xs mt-1">{current.albumName}</p>
             </div>
-
-            {/* Liked by */}
-            {current.likedByUserIds.length > 0 && (
-              <p className="text-white/30 text-xs mt-2 mb-4">
-                liked by {current.likedByUserIds.length} friend{current.likedByUserIds.length > 1 ? "s" : ""}
-              </p>
-            )}
 
             {/* Playback status */}
             {playerState.error && (

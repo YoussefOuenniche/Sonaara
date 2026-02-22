@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession, getAccessToken } from "@/lib/session";
+import { getSession } from "@/lib/session";
 import { getUser, getUsers, getFriendIds } from "@/lib/store";
 import type { DiscoverTrack } from "@/types";
 
@@ -7,23 +7,21 @@ export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session.userId) return NextResponse.json({ tracks: [] });
 
-  const accessToken = await getAccessToken();
-  if (!accessToken) return NextResponse.json({ tracks: [] });
-
   const genre = request.nextUrl.searchParams.get("genre") ?? "";
 
-  // Get current user's liked track IDs (to exclude)
   const currentUser = await getUser(session.userId);
   const myLikedIds = new Set((currentUser?.likedTracks ?? []).map((t) => t.id));
   const mySkipped = new Set(currentUser?.skippedTrackIds ?? []);
 
-  // Get friends
+  // Name map for resolving display names
+  const nameMap = new Map<string, string>();
+  nameMap.set(session.userId, currentUser?.userName ?? "you");
+
   const friendIds = await getFriendIds(session.userId);
-  if (!friendIds.length) return NextResponse.json({ tracks: [] });
+  const friends = friendIds.length ? await getUsers(friendIds) : [];
+  for (const f of friends) nameMap.set(f.userId, f.userName);
 
-  const friends = await getUsers(friendIds);
-
-  // Build pool: tracks from friends that I haven't liked or skipped
+  // Build pool from friends' liked tracks
   const poolMap = new Map<string, DiscoverTrack>();
 
   for (const friend of friends) {
@@ -32,12 +30,14 @@ export async function GET(request: NextRequest) {
       if (mySkipped.has(track.id)) continue;
 
       if (poolMap.has(track.id)) {
-        // Already in pool — add this friend to likedByUserIds
-        poolMap.get(track.id)!.likedByUserIds.push(friend.userId);
+        const existing = poolMap.get(track.id)!;
+        existing.likedByUserIds.push(friend.userId);
+        existing.likedByNames.push(nameMap.get(friend.userId) ?? "a friend");
       } else {
         poolMap.set(track.id, {
           ...track,
           likedByUserIds: [friend.userId],
+          likedByNames: [nameMap.get(friend.userId) ?? "a friend"],
         });
       }
     }
@@ -45,7 +45,19 @@ export async function GET(request: NextRequest) {
 
   let pool = Array.from(poolMap.values());
 
-  // Filter by genre if requested
+  // Fallback: if pool is empty, seed with the current user's own liked tracks
+  if (pool.length === 0 && (currentUser?.likedTracks ?? []).length > 0) {
+    const myName = currentUser!.userName ?? "you";
+    pool = (currentUser!.likedTracks ?? [])
+      .filter((t) => !mySkipped.has(t.id))
+      .map((track) => ({
+        ...track,
+        likedByUserIds: [session.userId!],
+        likedByNames: [myName],
+      }));
+  }
+
+  // Filter by genre
   if (genre && genre !== "anything") {
     const g = genre.toLowerCase();
     pool = pool.filter((t) =>
@@ -53,7 +65,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Sort: tracks liked by more friends first, then shuffle within groups
+  // Sort: tracks liked by more people first
   pool.sort((a, b) => b.likedByUserIds.length - a.likedByUserIds.length);
 
   return NextResponse.json({ tracks: pool });

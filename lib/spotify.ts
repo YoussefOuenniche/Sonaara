@@ -233,6 +233,7 @@ export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack
           genres: [],
           uri: t.uri,
           likedByUserIds: [],
+          likedByNames: [],
         },
       });
     }

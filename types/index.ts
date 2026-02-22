@@ -39,7 +39,8 @@ export interface DiscoverTrack {
   albumImageUrl: string;
   genres: string[];
   uri: string; // spotify:track:...
-  likedByUserIds: string[]; // which friends liked this
+  likedByUserIds: string[];
+  likedByNames: string[]; // display names matching likedByUserIds
 }
 
 export interface AggregatedAudioFeatures {
