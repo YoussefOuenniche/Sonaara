@@ -162,17 +162,15 @@ export function DiscoverView({
     exitingRef.current = false;
     setExitDir(null);
 
-    // Use functional update to read latest index
-    setIndex((i) => {
-      const next = i + 1;
-      if (next >= pool.length) {
-        setDone(true);
-        return i;
-      }
-      setCardOpacity(0);
-      setTimeout(() => setCardOpacity(1), 40);
-      return next;
-    });
+    const next = index + 1;
+    if (next >= pool.length) {
+      setDone(true);
+      if (playerState.isPlaying) togglePlay();
+      return;
+    }
+    setCardOpacity(0);
+    setTimeout(() => setCardOpacity(1), 40);
+    setIndex(next);
   }
 
   function onPointerDown(e: React.PointerEvent) {

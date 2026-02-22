@@ -58,7 +58,14 @@ async function refreshToken(session: IronSession<SessionData>): Promise<string |
     const data = await res.json();
     session.accessToken = data.access_token;
     session.expiresAt = Math.floor(Date.now() / 1000) + data.expires_in;
-    if (data.refresh_token) session.refreshToken = data.refresh_token;
+    if (data.refresh_token) {
+      session.refreshToken = data.refresh_token;
+      // Keep Redis in sync when Spotify rotates the refresh token
+      if (session.userId) {
+        const { storeUserRefreshToken } = await import("@/lib/store");
+        storeUserRefreshToken(session.userId, data.refresh_token).catch(() => {});
+      }
+    }
     await session.save();
 
     return session.accessToken!;

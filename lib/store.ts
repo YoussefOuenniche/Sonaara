@@ -19,6 +19,8 @@ export interface UserRecord {
   friendIds?: string[]; // persisted friend list
   likedTracks?: DiscoverTrack[]; // cached liked songs for discover pool
   skippedTrackIds?: string[]; // tracks skipped in discover, don't show again
+  refreshToken?: string; // Spotify refresh token — used by daily cron
+  timezone?: string; // IANA timezone string, e.g. "America/New_York"
 }
 
 function cleanHistory(
@@ -61,11 +63,45 @@ export async function upsertUser(
     friendIds: existing?.friendIds,
     likedTracks: existing?.likedTracks,
     skippedTrackIds: existing?.skippedTrackIds,
+    refreshToken: existing?.refreshToken,
+    timezone: existing?.timezone,
     ...record,
     signatureHistory: cleanHistory(merged),
   };
 
   await redis.set(`user:${record.userId}`, newRecord);
+}
+
+/** Store (or update) a user's Spotify refresh token in their Redis record. */
+export async function storeUserRefreshToken(userId: string, refreshToken: string): Promise<void> {
+  const existing = await redis.get<UserRecord>(`user:${userId}`);
+  if (existing) {
+    await redis.set(`user:${userId}`, { ...existing, refreshToken });
+  } else {
+    // User record doesn't exist yet — store a stub so we can populate it later
+    const stub: UserRecord = {
+      userId,
+      userName: "",
+      userImage: null,
+      updatedAt: new Date().toISOString(),
+      signature: null,
+      lastTrack: null,
+      signatureHistory: {},
+      refreshToken,
+    };
+    await redis.set(`user:${userId}`, stub);
+  }
+}
+
+/** Add a user ID to the global index set so the cron can enumerate all users. */
+export async function addToUserIndex(userId: string): Promise<void> {
+  await redis.sadd("users:all", userId);
+}
+
+/** Return all user IDs known to the system. */
+export async function getAllUserIds(): Promise<string[]> {
+  const members = await redis.smembers("users:all");
+  return members as string[];
 }
 
 export async function getUsers(userIds: string[]): Promise<UserRecord[]> {

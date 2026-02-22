@@ -117,6 +117,7 @@ export default async function DashboardPage() {
           updatedAt: new Date().toISOString(),
           signature: todaySignature,
           lastTrack,
+          timezone: tz,
         },
         fullHistory
       ).catch(() => {}),

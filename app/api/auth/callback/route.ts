@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { addToUserIndex, storeUserRefreshToken } from "@/lib/store";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -44,6 +45,14 @@ export async function GET(request: NextRequest) {
   session.userName = profile.display_name ?? profile.id ?? "there";
   session.userImage = profile.images?.[0]?.url ?? null;
   await session.save();
+
+  // Persist refresh token + add user to global index so the daily cron can reach them
+  if (profile.id && tokens.refresh_token) {
+    await Promise.all([
+      addToUserIndex(profile.id),
+      storeUserRefreshToken(profile.id, tokens.refresh_token),
+    ]).catch(() => {});
+  }
 
   // Use meta-refresh so the Set-Cookie header lands on this response
   // before the browser navigates — a plain redirect loses the cookie.
