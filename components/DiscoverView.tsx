@@ -92,6 +92,9 @@ export function DiscoverView({
   const [skipAnim, setSkipAnim] = useState(false);
   const [playAnim, setPlayAnim] = useState(false);
 
+  // Undo last like/skip
+  const [lastAction, setLastAction] = useState<{ dir: "left" | "right"; track: DiscoverTrack; index: number } | null>(null);
+
   const { state: playerState, playTrack, togglePlay, activateElement } = useSpotifyPlayer(accessToken);
 
   const fetchPool = useCallback(async (g: string) => {
@@ -158,9 +161,10 @@ export function DiscoverView({
     setDragOffset(0);
     await sleep(320);
 
-    // Card is gone — advance to next
+    // Card is gone — save action for potential undo, then advance
     exitingRef.current = false;
     setExitDir(null);
+    setLastAction({ dir, track: current, index });
 
     const next = index + 1;
     if (next >= pool.length) {
@@ -171,6 +175,33 @@ export function DiscoverView({
     setCardOpacity(0);
     setTimeout(() => setCardOpacity(1), 40);
     setIndex(next);
+  }
+
+  async function handleUndo() {
+    if (!lastAction) return;
+    const { dir, track, index: prevIndex } = lastAction;
+    setLastAction(null);
+
+    // Reverse the API action
+    if (dir === "right") {
+      fetch("/api/songs/unlike", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: track.id }),
+      }).catch(() => {});
+    } else {
+      fetch("/api/songs/unskip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: track.id }),
+      }).catch(() => {});
+    }
+
+    // Restore card
+    setDone(false);
+    setCardOpacity(0);
+    setIndex(prevIndex);
+    setTimeout(() => setCardOpacity(1), 40);
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -506,6 +537,21 @@ export function DiscoverView({
                 <span className="text-xl transition-colors duration-150" style={{ color: heartAnim ? "#f472b6" : "rgba(255,255,255,0.7)" }}>♥</span>
               </button>
             </div>
+
+            {/* Undo */}
+            {lastAction && (
+              <button
+                onClick={handleUndo}
+                className="mt-5 flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                style={{ color: "rgba(255,255,255,0.3)" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 6.5A4.5 4.5 0 1 0 6.5 2H4" />
+                  <path d="M2 2v4h4" />
+                </svg>
+                undo
+              </button>
+            )}
           </div>
         )}
       </div>
