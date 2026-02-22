@@ -163,12 +163,12 @@ function FriendCard({
 }) {
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 animate-pulse">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex-shrink-0" />
-          <div className="flex-1 space-y-1.5">
-            <div className="h-3 bg-white/10 rounded w-1/3" />
-            <div className="h-2.5 bg-white/5 rounded w-1/2" />
+          <div className="w-10 h-10 rounded-full bg-white/10 flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 bg-white/10 rounded w-1/3" />
+            <div className="h-3 bg-white/5 rounded w-1/2" />
           </div>
         </div>
       </div>
@@ -177,71 +177,77 @@ function FriendCard({
 
   if (!data) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/20 text-xs flex-shrink-0">?</div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/20 text-sm flex-shrink-0">?</div>
         <div className="flex-1 min-w-0">
           <p className="text-white/40 text-sm font-mono truncate">{userId}</p>
           <p className="text-white/20 text-xs mt-0.5">Hasn&apos;t opened Sonaara yet</p>
         </div>
-        <button onClick={onRemove} className="text-white/15 hover:text-white/40 transition-colors text-xs flex-shrink-0">✕</button>
+        <button onClick={onRemove} className="text-white/20 hover:text-white/50 transition-colors flex-shrink-0">✕</button>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3 flex items-center gap-3">
-      {/* Avatar */}
-      <div className="relative w-8 h-8 flex-shrink-0">
-        {data.userImage ? (
-          <Image
-            src={data.userImage}
-            alt={data.userName}
-            fill
-            className="rounded-full object-cover"
-            sizes="32px"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm text-white/50">
-            {data.userName[0]?.toUpperCase() ?? "?"}
-          </div>
-        )}
-      </div>
-
-      {/* Center: name + track */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-white text-sm font-medium truncate">{data.userName}</span>
-          {data.signature && (
-            <span className="text-sm leading-none select-none flex-shrink-0">
-              {data.signature.genre} {data.signature.mood} {data.signature.theme}
-            </span>
+    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+      <div className="flex items-center gap-3">
+        {/* Avatar */}
+        <div className="relative w-10 h-10 flex-shrink-0">
+          {data.userImage ? (
+            <Image
+              src={data.userImage}
+              alt={data.userName}
+              fill
+              className="rounded-full object-cover"
+              sizes="40px"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-base text-white/50">
+              {data.userName[0]?.toUpperCase() ?? "?"}
+            </div>
           )}
         </div>
-        {data.lastTrack ? (
-          <div className="flex items-center gap-1.5 mt-1">
-            {data.lastTrack.albumImageUrl && (
-              <div className="relative w-3.5 h-3.5 flex-shrink-0">
-                <Image
-                  src={data.lastTrack.albumImageUrl}
-                  alt={data.lastTrack.albumName}
-                  fill
-                  className="rounded-sm object-cover"
-                  sizes="14px"
-                />
-              </div>
-            )}
-            <p className="text-white/35 text-xs truncate">
-              {data.lastTrack.name}
-              <span className="text-white/20"> · {data.lastTrack.artists[0]}</span>
-            </p>
-          </div>
-        ) : (
-          <p className="text-white/20 text-xs mt-0.5">No recent track</p>
-        )}
-      </div>
 
-      {/* Remove */}
-      <button onClick={onRemove} className="text-white/15 hover:text-white/40 transition-colors text-xs flex-shrink-0">✕</button>
+        {/* Center: name + track */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-white text-[15px] font-semibold truncate">{data.userName}</span>
+            {data.signature ? (
+              <span className="flex gap-1 bg-white/8 rounded-lg px-2 py-0.5 flex-shrink-0">
+                <span className="text-lg leading-none select-none">{data.signature.genre}</span>
+                <span className="text-lg leading-none select-none">{data.signature.mood}</span>
+                <span className="text-lg leading-none select-none">{data.signature.theme}</span>
+              </span>
+            ) : (
+              <span className="text-white/20 text-xs">no signature yet</span>
+            )}
+          </div>
+          {data.lastTrack ? (
+            <div className="flex items-center gap-2">
+              {data.lastTrack.albumImageUrl && (
+                <div className="relative w-4 h-4 flex-shrink-0">
+                  <Image
+                    src={data.lastTrack.albumImageUrl}
+                    alt={data.lastTrack.albumName}
+                    fill
+                    className="rounded-sm object-cover"
+                    sizes="16px"
+                  />
+                </div>
+              )}
+              <p className="text-white/40 text-xs truncate">
+                {data.lastTrack.name}
+                <span className="text-white/20"> · {data.lastTrack.artists[0]}</span>
+              </p>
+            </div>
+          ) : (
+            <p className="text-white/20 text-xs">No recent track</p>
+          )}
+        </div>
+
+        {/* Remove */}
+        <button onClick={onRemove} className="text-white/20 hover:text-white/50 transition-colors flex-shrink-0">✕</button>
+      </div>
     </div>
   );
 }
