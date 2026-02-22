@@ -359,6 +359,24 @@ export function DiscoverView({
                       spellCheck={false}
                     />
                   </div>
+
+                  {/* Unavailable genre message — below search, always visible */}
+                  <div
+                    className="text-center text-xs px-4 transition-all duration-500"
+                    style={{
+                      color: "rgba(255,255,255,0.3)",
+                      opacity: unavailableMsg ? 1 : 0,
+                      maxHeight: unavailableMsg ? "32px" : "0px",
+                      paddingTop: unavailableMsg ? "7px" : "0px",
+                      paddingBottom: unavailableMsg ? "7px" : "0px",
+                      overflow: "hidden",
+                      borderBottom: unavailableMsg ? "1px solid rgba(255,255,255,0.05)" : "1px solid transparent",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    your friends don&apos;t seem to listen to this genre
+                  </div>
+
                   <div className="overflow-y-auto" style={{ maxHeight: "220px" }}>
                     {GENRES
                       .filter((g) =>
@@ -405,22 +423,6 @@ export function DiscoverView({
                       })}
                   </div>
 
-                  {/* Unavailable genre message — inside the panel so it's always visible */}
-                  <div
-                    className="text-center text-xs px-4 transition-all duration-500"
-                    style={{
-                      color: "rgba(255,255,255,0.3)",
-                      opacity: unavailableMsg ? 1 : 0,
-                      maxHeight: unavailableMsg ? "32px" : "0px",
-                      paddingTop: unavailableMsg ? "8px" : "0px",
-                      paddingBottom: unavailableMsg ? "8px" : "0px",
-                      overflow: "hidden",
-                      borderTop: unavailableMsg ? "1px solid rgba(255,255,255,0.05)" : "1px solid transparent",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    your friends don&apos;t seem to listen to this genre
-                  </div>
                 </div>
               </div>
 
