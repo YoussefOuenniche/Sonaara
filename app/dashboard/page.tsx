@@ -16,7 +16,6 @@ import { generateSignature } from "@/lib/claude";
 import { LastPlayedCard } from "@/components/LastPlayedCard";
 import { SignatureCard } from "@/components/SignatureCard";
 import { FriendsSection } from "@/components/FriendsSection";
-import { VinylLogo } from "@/components/VinylLogo";
 import { BottomNav } from "@/components/BottomNav";
 import type { Signature, Track, TrackWithGenres } from "@/types";
 
@@ -189,20 +188,17 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* 4. Footer — logo + sign out */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
-            <VinylLogo size={24} />
-            <span className="font-bold text-sm tracking-tight" style={{ color: "var(--foreground)", opacity: 0.35 }}>
-              sonaara
-            </span>
-          </div>
+        {/* 4. Footer — centered wordmark + sign out */}
+        <div className="flex flex-col items-center gap-1 pt-2 pb-2">
+          <span className="font-bold text-sm tracking-tight" style={{ color: "var(--foreground)", opacity: 0.3 }}>
+            sonaara
+          </span>
           <a
             href="/api/auth/logout"
             className="text-xs transition-opacity hover:opacity-60"
-            style={{ color: "var(--lilac)", opacity: 0.3 }}
+            style={{ color: "var(--lilac)", opacity: 0.25 }}
           >
-            Sign out
+            sign out
           </a>
         </div>
       </main>
