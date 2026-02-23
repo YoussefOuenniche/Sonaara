@@ -84,24 +84,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Sort by endorsement count descending, then shuffle within each tier so
-  // no single friend dominates the order
-  pool.sort((a, b) => b.likedByUserIds.length - a.likedByUserIds.length);
-
-  const shuffled: typeof pool = [];
-  let i = 0;
-  while (i < pool.length) {
-    let j = i;
-    const count = pool[i].likedByUserIds.length;
-    while (j < pool.length && pool[j].likedByUserIds.length === count) j++;
-    const tier = pool.slice(i, j);
-    for (let k = tier.length - 1; k > 0; k--) {
-      const r = Math.floor(Math.random() * (k + 1));
-      [tier[k], tier[r]] = [tier[r], tier[k]];
-    }
-    shuffled.push(...tier);
-    i = j;
+  // Full random shuffle — gives an even mix of songs from all friends
+  for (let k = pool.length - 1; k > 0; k--) {
+    const r = Math.floor(Math.random() * (k + 1));
+    [pool[k], pool[r]] = [pool[r], pool[k]];
   }
 
-  return NextResponse.json({ tracks: shuffled, friendCount: friends.length });
+  return NextResponse.json({ tracks: pool, friendCount: friends.length });
 }
