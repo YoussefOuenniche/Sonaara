@@ -33,14 +33,22 @@ export default async function DashboardPage() {
   const userId = session.userId ?? "";
   const yesterdayKey = getDayKey(1, tz);
 
-  // Fetch in parallel: stored user, last played, yesterday's tracks, recent grouped, liked tracks
-  const [existingUser, lastTrack, yesterdayRawTracks, recentGrouped, likedTracks] = await Promise.all([
+  // Fetch in parallel: stored user, last played, yesterday's tracks, recent grouped
+  const [existingUser, lastTrack, yesterdayRawTracks, recentGrouped] = await Promise.all([
     userId ? getUser(userId) : Promise.resolve(null),
     getLastPlayedTrack(accessToken).catch(() => null),
     getYesterdayTracks(accessToken, tz).catch(() => []),
     getRecentTracksGrouped(accessToken, tz).catch(() => ({} as Record<string, Track[]>)),
-    getLikedTracks(accessToken).catch(() => []),
   ]);
+
+  // Warm liked-tracks cache only if empty — fetching the full library is expensive
+  // and only needed the first time (cron keeps it fresh after that)
+  const cachedLikedTracks = existingUser?.likedTracks ?? [];
+  if (userId && cachedLikedTracks.length === 0) {
+    getLikedTracks(accessToken)
+      .then((tracks) => { if (tracks.length > 0) setLikedTracks(userId, tracks).catch(() => {}); })
+      .catch(() => {});
+  }
 
   // Clean stored history (removes any "undefined" or malformed keys)
   const storedHistory: Record<string, Signature | null> =
@@ -120,10 +128,7 @@ export default async function DashboardPage() {
           timezone: tz,
         },
         fullHistory
-      ).catch(() => {}),
-      likedTracks.length > 0
-        ? setLikedTracks(userId, likedTracks).catch(() => {})
-        : Promise.resolve(),
+      ).catch(() =>{}),
     ]);
   }
 
