@@ -5,11 +5,7 @@ import Image from "next/image";
 import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { DiscoverTrack } from "@/types";
-
-/** Capitalise each word of a Spotify genre string for display (e.g. "neo-soul" → "Neo-Soul") */
-function formatGenreLabel(s: string): string {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { GENRE_UMBRELLAS } from "@/lib/genres";
 
 
 type Phase = "prompt" | "cards";
@@ -23,7 +19,8 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   const [genre, setGenre] = useState("anything");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [genreSearch, setGenreSearch] = useState("");
-  const [genres, setGenres] = useState<string[] | null>(null);
+  const [availableGenres, setAvailableGenres] = useState<Set<string> | null>(null);
+  const [unavailableMsg, setUnavailableMsg] = useState(false);
   const [pool, setPool] = useState<DiscoverTrack[]>([]);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -78,12 +75,12 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
 
   // Fetch available genres once when on prompt screen
   useEffect(() => {
-    if (phase !== "prompt" || genres !== null) return;
+    if (phase !== "prompt" || availableGenres !== null) return;
     fetch("/api/discover/genres")
       .then((r) => r.json())
-      .then((data: { available: string[] }) => setGenres(data.available ?? []))
-      .catch(() => setGenres([]));
-  }, [phase, genres]);
+      .then((data: { available: string[] }) => setAvailableGenres(new Set(data.available ?? [])))
+      .catch(() => setAvailableGenres(new Set()));
+  }, [phase, availableGenres]);
 
   function handleSubmit() {
     activateElement();
@@ -96,7 +93,7 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
     setPool([]);
     setDone(false);
     setIndex(0);
-    setGenres(null);
+    setAvailableGenres(null);
   }
 
   async function triggerExit(dir: "left" | "right") {
@@ -199,7 +196,7 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
     setTimeout(() => setPlayAnim(false), 200);
   }
 
-  const genreLabel = genre === "anything" ? "Anything" : formatGenreLabel(genre);
+  const genreLabel = genre === "anything" ? "Anything" : (GENRE_UMBRELLAS.find((g) => g.value === genre)?.label ?? genre);
 
   // Overlay opacity for swipe feedback
   const overlayOpacity = Math.min(Math.abs(dragOffset) / SWIPE_THRESHOLD, 1) * 0.45;
@@ -305,30 +302,58 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
                     />
                   </div>
 
+                  {/* Unavailable genre message */}
+                  <div
+                    className="text-center text-xs px-4 transition-all duration-500"
+                    style={{
+                      color: "rgba(255,255,255,0.3)",
+                      opacity: unavailableMsg ? 1 : 0,
+                      maxHeight: unavailableMsg ? "32px" : "0px",
+                      paddingTop: unavailableMsg ? "7px" : "0px",
+                      paddingBottom: unavailableMsg ? "7px" : "0px",
+                      overflow: "hidden",
+                      borderBottom: unavailableMsg ? "1px solid rgba(255,255,255,0.05)" : "1px solid transparent",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    your friends don&apos;t seem to listen to this genre
+                  </div>
+
                   <div className="overflow-y-auto" style={{ maxHeight: "220px" }}>
-                    {[{ label: "Anything", value: "anything" }, ...(genres ?? []).map((g) => ({ label: formatGenreLabel(g), value: g }))]
+                    {[{ label: "Anything", value: "anything" }, ...GENRE_UMBRELLAS]
                       .filter((g) =>
                         genreSearch.trim() === "" ||
                         g.label.toLowerCase().includes(genreSearch.toLowerCase())
                       )
                       .map((g) => {
+                        const isAvailable = g.value === "anything" || availableGenres === null || availableGenres.has(g.value);
                         const isSelected = g.value === genre;
                         return (
                           <button
                             key={g.value}
                             onClick={() => {
+                              if (!isAvailable) {
+                                setUnavailableMsg(true);
+                                setTimeout(() => setUnavailableMsg(false), 2200);
+                                return;
+                              }
                               setGenre(g.value);
                               setDropdownOpen(false);
                               setGenreSearch("");
                             }}
                             className="w-full text-left px-4 py-2.5 text-sm transition-colors"
                             style={{
-                              color: isSelected ? "rgba(196,168,240,1)" : "rgba(255,255,255,0.65)",
+                              color: isSelected
+                                ? "rgba(196,168,240,1)"
+                                : isAvailable
+                                ? "rgba(255,255,255,0.65)"
+                                : "rgba(255,255,255,0.22)",
                               background: isSelected ? "rgba(196,168,240,0.12)" : "transparent",
                               fontWeight: isSelected ? 600 : 400,
+                              cursor: isAvailable ? "pointer" : "default",
                             }}
                             onMouseEnter={(e) => {
-                              if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                              if (!isSelected && isAvailable) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
                             }}
                             onMouseLeave={(e) => {
                               if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
