@@ -84,8 +84,24 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Sort: tracks liked by more people first
+  // Sort by endorsement count descending, then shuffle within each tier so
+  // no single friend dominates the order
   pool.sort((a, b) => b.likedByUserIds.length - a.likedByUserIds.length);
 
-  return NextResponse.json({ tracks: pool });
+  const shuffled: typeof pool = [];
+  let i = 0;
+  while (i < pool.length) {
+    let j = i;
+    const count = pool[i].likedByUserIds.length;
+    while (j < pool.length && pool[j].likedByUserIds.length === count) j++;
+    const tier = pool.slice(i, j);
+    for (let k = tier.length - 1; k > 0; k--) {
+      const r = Math.floor(Math.random() * (k + 1));
+      [tier[k], tier[r]] = [tier[r], tier[k]];
+    }
+    shuffled.push(...tier);
+    i = j;
+  }
+
+  return NextResponse.json({ tracks: shuffled, friendCount: friends.length });
 }

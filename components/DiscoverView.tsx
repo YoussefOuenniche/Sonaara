@@ -22,6 +22,7 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   const [availableGenres, setAvailableGenres] = useState<Set<string> | null>(null);
   const [unavailableMsg, setUnavailableMsg] = useState(false);
   const [pool, setPool] = useState<DiscoverTrack[]>([]);
+  const [friendCount, setFriendCount] = useState(0);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -53,8 +54,9 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
     setIndex(0);
     try {
       const res = await fetch(`/api/discover/pool?genre=${encodeURIComponent(g)}`);
-      const json = await res.json() as { tracks: DiscoverTrack[] };
+      const json = await res.json() as { tracks: DiscoverTrack[]; friendCount?: number };
       setPool(json.tracks ?? []);
+      setFriendCount(json.friendCount ?? 0);
       if (!json.tracks?.length) setDone(true);
     } catch {
       setPool([]);
@@ -470,11 +472,13 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
                 <span className="text-white/50 text-sm">
                   liked by{" "}
                   <span className="text-white/80 font-semibold">
-                    {current.likedByNames.length === 1
+                    {friendCount >= 2 && current.likedByUserIds.length >= friendCount
+                      ? "everybody"
+                      : current.likedByNames.length === 1
                       ? current.likedByNames[0]
                       : current.likedByNames.length === 2
                       ? `${current.likedByNames[0]} & ${current.likedByNames[1]}`
-                      : `${current.likedByNames[0]} +${current.likedByNames.length - 1} others`}
+                      : `${current.likedByNames[0]} & ${current.likedByNames.length - 1} others`}
                   </span>
                 </span>
               </div>
