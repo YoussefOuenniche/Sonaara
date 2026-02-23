@@ -197,7 +197,7 @@ export function aggregateAudioFeatures(
   };
 }
 
-// Fetch user's liked songs (up to 200) with genre tags
+// Fetch all of the user's liked songs with genre tags
 export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack[]> {
   type RawSavedItem = {
     track: {
@@ -212,7 +212,7 @@ export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack
   const raw: { artistIds: string[]; track: DiscoverTrack }[] = [];
   let nextPath: string | null = "/me/tracks?limit=50";
 
-  while (nextPath && raw.length < 200) {
+  while (nextPath) {
     const data = await spotifyFetch(nextPath, accessToken).catch(() => null) as {
       items: RawSavedItem[];
       next: string | null;
