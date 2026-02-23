@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
 import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
 import { getLikedTracks } from "@/lib/spotify";
+import { mapToUmbrellas } from "@/lib/genres";
 
 export async function GET() {
   const session = await getSession();
@@ -27,35 +28,45 @@ export async function GET() {
   const friendIds = await getFriendIds(session.userId);
   const friends = friendIds.length ? await getUsers(friendIds) : [];
 
-  // Count genre frequency across friends' pool tracks (excluding already-liked/skipped)
-  const genreFreq = new Map<string, number>();
+  // Count umbrella genre frequency across the pool (friends' tracks minus already-liked/skipped)
+  const umbrellaFreq = new Map<string, number>();
 
   for (const friend of friends) {
     for (const track of friend.likedTracks ?? []) {
       if (myLikedIds.has(track.id)) continue;
       if (mySkipped.has(track.id)) continue;
+      const seen = new Set<string>();
       for (const g of track.genres ?? []) {
-        const key = g.toLowerCase().trim();
-        if (key) genreFreq.set(key, (genreFreq.get(key) ?? 0) + 1);
+        for (const umbrella of mapToUmbrellas(g)) {
+          if (!seen.has(umbrella)) {
+            seen.add(umbrella);
+            umbrellaFreq.set(umbrella, (umbrellaFreq.get(umbrella) ?? 0) + 1);
+          }
+        }
       }
     }
   }
 
-  // Fallback: if no friends, use own tracks
-  if (genreFreq.size === 0) {
+  // Fallback: use own tracks if no friends
+  if (umbrellaFreq.size === 0) {
     for (const track of myLikedTracks) {
       if (mySkipped.has(track.id)) continue;
+      const seen = new Set<string>();
       for (const g of track.genres ?? []) {
-        const key = g.toLowerCase().trim();
-        if (key) genreFreq.set(key, (genreFreq.get(key) ?? 0) + 1);
+        for (const umbrella of mapToUmbrellas(g)) {
+          if (!seen.has(umbrella)) {
+            seen.add(umbrella);
+            umbrellaFreq.set(umbrella, (umbrellaFreq.get(umbrella) ?? 0) + 1);
+          }
+        }
       }
     }
   }
 
-  // Sort by frequency descending, then alphabetically
-  const available = Array.from(genreFreq.entries())
+  // Return umbrella values sorted by frequency descending, then alphabetically
+  const available = Array.from(umbrellaFreq.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([g]) => g);
+    .map(([value]) => value);
 
   return NextResponse.json({ available });
 }

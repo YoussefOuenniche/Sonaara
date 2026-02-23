@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
 import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
 import { getLikedTracks } from "@/lib/spotify";
+import { getUmbrellaKeywords } from "@/lib/genres";
 import type { DiscoverTrack } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -72,11 +73,14 @@ export async function GET(request: NextRequest) {
       }));
   }
 
-  // Filter by genre
+  // Filter by umbrella genre — expand to all matching micro-genre keywords
   if (genre && genre !== "anything") {
-    const g = genre.toLowerCase();
+    const keywords = getUmbrellaKeywords(genre.toLowerCase());
     pool = pool.filter((t) =>
-      t.genres.some((tg) => tg.toLowerCase().includes(g))
+      t.genres.some((tg) => {
+        const tgl = tg.toLowerCase();
+        return keywords.some((kw) => tgl.includes(kw));
+      })
     );
   }
 
