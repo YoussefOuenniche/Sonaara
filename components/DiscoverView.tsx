@@ -103,9 +103,6 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
     if (exitingRef.current || !current) return;
     exitingRef.current = true;
 
-    // Pause immediately on swipe so audio never plays in the background
-    if (playerState.isPlaying) togglePlay();
-
     // Fire API immediately — non-blocking
     if (dir === "right") {
       fetch("/api/discover/like", {
@@ -134,6 +131,7 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
     const next = index + 1;
     if (next >= pool.length) {
       setDone(true);
+      if (playerState.isPlaying) togglePlay();
       return;
     }
     setCardOpacity(0);
