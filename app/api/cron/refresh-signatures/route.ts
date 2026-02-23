@@ -11,6 +11,7 @@ import {
   getAudioFeatures,
   aggregateAudioFeatures,
   getDayKey,
+  getLastPlayedTrack,
 } from "@/lib/spotify";
 import { generateSignature } from "@/lib/claude";
 
@@ -58,9 +59,6 @@ async function processUser(userId: string): Promise<"updated" | "skipped"> {
   const tz = record.timezone ?? "UTC";
   const yesterdayKey = getDayKey(1, tz);
 
-  // Skip if signature already generated today
-  if (yesterdayKey in (record.signatureHistory ?? {})) return "skipped";
-
   // Exchange refresh token for a fresh access token
   const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -83,7 +81,28 @@ async function processUser(userId: string): Promise<"updated" | "skipped"> {
     await storeUserRefreshToken(userId, tokenData.refresh_token).catch(() => {});
   }
 
-  // Fetch yesterday's tracks
+  // Always fetch the latest played track so friends see fresh data
+  const lastTrack = await getLastPlayedTrack(accessToken).catch(() => record.lastTrack);
+
+  // Skip expensive signature generation if already done for yesterday
+  const signatureAlreadyDone = yesterdayKey in (record.signatureHistory ?? {});
+  if (signatureAlreadyDone) {
+    await upsertUser(
+      {
+        userId: record.userId,
+        userName: record.userName,
+        userImage: record.userImage,
+        updatedAt: new Date().toISOString(),
+        signature: record.signature,
+        lastTrack,
+        timezone: tz,
+      },
+      {}
+    );
+    return "updated";
+  }
+
+  // Fetch yesterday's tracks and generate signature
   const rawTracks = await getYesterdayTracks(accessToken, tz).catch(() => []);
 
   let signature = null;
@@ -103,7 +122,7 @@ async function processUser(userId: string): Promise<"updated" | "skipped"> {
       userImage: record.userImage,
       updatedAt: new Date().toISOString(),
       signature,
-      lastTrack: record.lastTrack,
+      lastTrack,
       timezone: tz,
     },
     { [yesterdayKey]: signature }
