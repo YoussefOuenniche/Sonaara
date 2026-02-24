@@ -118,7 +118,6 @@ export function DiscoverView() {
   }, [phase, availableGenres]);
 
   function handleSubmit() {
-    embedPrime();
     setPhase("cards");
     fetchPool(genre);
   }

@@ -27,12 +27,11 @@ declare global {
 }
 
 export function useAudioPlayer() {
-  const ctrlRef           = useRef<EmbedController | null>(null);
-  const pendingUri        = useRef<string | null>(null);
-  const isPlayingRef      = useRef(false);
-  const userPausedRef     = useRef(false);  // true only when user explicitly pauses
-  const hasRealUriRef     = useRef(false);  // true once a real (non-placeholder) URI has been loaded
-  const retryRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ctrlRef       = useRef<EmbedController | null>(null);
+  const pendingUri    = useRef<string | null>(null);
+  const isPlayingRef  = useRef(false);
+  const userPausedRef = useRef(false);  // true only when user explicitly pauses
+  const retryRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady,   setIsReady]   = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -124,7 +123,6 @@ export function useAudioPlayer() {
   /** Load a Spotify URI and start playing. Queues if the controller isn't ready yet. */
   function loadAndPlay(uri: string | null) {
     if (!uri) return;
-    hasRealUriRef.current = true;
     const ctrl = ctrlRef.current;
     if (!ctrl) { pendingUri.current = uri; return; }
     _doLoadAndPlay(ctrl, uri);
@@ -148,21 +146,13 @@ export function useAudioPlayer() {
   }
 
   /**
-   * Call synchronously inside a user-gesture handler.
+   * Call synchronously inside a user-gesture handler (swipe/button press).
    * Sends play() to the iframe, which — with the Spotify embed's built-in
-   * allow="autoplay" delegation — establishes sticky activation so the iframe
-   * can play from async contexts (useEffect, etc.) without another gesture.
-   *
-   * If no real track has been loaded yet (placeholder is active), immediately
-   * pause after play() so the placeholder track doesn't audibly play on mobile.
+   * allow="autoplay" delegation — extends sticky activation so the iframe
+   * can keep playing across async track changes (useEffect, etc.).
    */
   function prime() {
-    const ctrl = ctrlRef.current;
-    if (!ctrl) return;
-    ctrl.play();
-    if (!hasRealUriRef.current) {
-      ctrl.pause();
-    }
+    ctrlRef.current?.play();
   }
 
   return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };
