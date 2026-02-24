@@ -30,7 +30,7 @@ export function DiscoverView() {
   const firstPlayDoneRef = useRef(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
-  const { isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useAudioPlayer();
+  const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useAudioPlayer();
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -71,11 +71,11 @@ export function DiscoverView() {
 
   const current = pool[index] ?? null;
 
-  // Load and play the 30-second preview whenever the card changes.
+  // Load and play whenever the card changes (wait for the controller to be ready).
   useEffect(() => {
-    if (current) loadAndPlay(current.previewUrl);
+    if (current && embedReady) loadAndPlay(current.uri);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id]);
+  }, [current?.id, embedReady]);
 
   // Show spinner until the first track actually starts playing (max 2s fallback)
   const firstTrackId = pool[0]?.id ?? null;
@@ -131,6 +131,10 @@ export function DiscoverView() {
   async function triggerExit(dir: "left" | "right") {
     if (exitingRef.current || !current) return;
     exitingRef.current = true;
+    // Call play() synchronously while still in the user-gesture context.
+    // With the embed's allow="autoplay" delegation this extends sticky
+    // activation into the iframe so the next loadUri+play() succeeds.
+    embedPrime();
 
     // Fire API immediately — non-blocking
     if (dir === "right") {
@@ -589,7 +593,7 @@ export function DiscoverView() {
               {/* Play/pause — white */}
               <button
                 onClick={() => { triggerPlayAnim(); togglePlay(); }}
-                disabled={false}
+                disabled={!embedReady}
                 className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-100 disabled:opacity-30"
                 style={{
                   background: playAnim ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)",

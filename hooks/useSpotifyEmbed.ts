@@ -2,15 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// A 0-sample silent WAV — no sound at any volume, but playing it via a
-// user gesture permanently activates this audio element on iOS so all
-// subsequent play() calls succeed from any async context.
-const UNLOCK_SRC =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+interface EmbedController {
+  loadUri: (uri: string) => void;
+  play: () => void;
+  pause: () => void;
+  addListener: (event: string, cb: (data: unknown) => void) => void;
+  removeListener: (event: string) => void;
+  destroy: () => void;
+}
+
+interface SpotifyIFrameAPI {
+  createController: (
+    element: HTMLElement,
+    options: { uri: string; width: string | number; height: string | number },
+    callback: (controller: EmbedController) => void
+  ) => void;
+}
+
+declare global {
+  interface Window {
+    onSpotifyIframeApiReady?: (api: SpotifyIFrameAPI) => void;
+    SpotifyIframeApi?: SpotifyIFrameAPI;
+  }
+}
 
 export function useAudioPlayer() {
-  const audioRef    = useRef<HTMLAudioElement | null>(null);
+  const ctrlRef     = useRef<EmbedController | null>(null);
+  const pendingUri  = useRef<string | null>(null);
   const isPlayingRef = useRef(false);
+  const [isReady,   setIsReady]   = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   function setPlaying(v: boolean) {
@@ -19,59 +39,86 @@ export function useAudioPlayer() {
   }
 
   useEffect(() => {
-    const audio = new Audio();
-    audioRef.current = audio;
+    const container = document.createElement("div");
+    container.setAttribute("aria-hidden", "true");
+    container.style.cssText =
+      "position:fixed;bottom:0;left:-9999px;width:300px;height:80px;pointer-events:none;";
+    document.body.appendChild(container);
 
-    const onPlaying = () => setPlaying(true);
-    const onPause   = () => setPlaying(false);
-    const onEnded   = () => setPlaying(false);
+    function init(IFrameAPI: SpotifyIFrameAPI) {
+      if (ctrlRef.current) return;
+      IFrameAPI.createController(
+        container,
+        // Placeholder track — immediately replaced by the first loadAndPlay() call.
+        { uri: "spotify:track:4iV5W9uYEdYUVa79Axb7Rh", width: "100%", height: 80 },
+        (ctrl) => {
+          ctrlRef.current = ctrl;
+          setIsReady(true);
+          ctrl.addListener("playback_update", (raw) => {
+            const d = (raw as { data?: { isPaused?: boolean } })?.data;
+            if (d !== undefined) setPlaying(!d.isPaused);
+          });
+          if (pendingUri.current) {
+            const uri = pendingUri.current;
+            pendingUri.current = null;
+            ctrl.loadUri(uri);
+            ctrl.play();
+          }
+        }
+      );
+    }
 
-    audio.addEventListener("playing", onPlaying);
-    audio.addEventListener("pause",   onPause);
-    audio.addEventListener("ended",   onEnded);
+    if (window.SpotifyIframeApi) {
+      init(window.SpotifyIframeApi);
+    } else {
+      window.onSpotifyIframeApiReady = init;
+      if (!document.getElementById("spotify-embed-api")) {
+        const s = document.createElement("script");
+        s.id = "spotify-embed-api";
+        s.src = "https://open.spotify.com/embed/iframe-api/v1";
+        s.async = true;
+        document.body.appendChild(s);
+      }
+    }
 
     return () => {
-      audio.removeEventListener("playing", onPlaying);
-      audio.removeEventListener("pause",   onPause);
-      audio.removeEventListener("ended",   onEnded);
-      audio.pause();
-      audio.src     = "";
-      audioRef.current = null;
+      ctrlRef.current?.destroy();
+      ctrlRef.current = null;
+      container.parentNode?.removeChild(container);
+      setIsReady(false);
+      setPlaying(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Replace the current track and start playing. Null = no preview, no-op. */
-  function loadAndPlay(previewUrl: string | null) {
-    const audio = audioRef.current;
-    if (!audio || !previewUrl) return;
-    audio.src = previewUrl;
-    audio.play().catch(() => {});
+  /** Load a Spotify URI and start playing. Queues if the controller isn't ready yet. */
+  function loadAndPlay(uri: string | null) {
+    if (!uri) return;
+    const ctrl = ctrlRef.current;
+    if (!ctrl) { pendingUri.current = uri; return; }
+    ctrl.loadUri(uri);
+    ctrl.play();
   }
 
   function pause() {
-    audioRef.current?.pause();
+    ctrlRef.current?.pause();
   }
 
   function togglePlay() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlayingRef.current) audio.pause();
-    else audio.play().catch(() => {});
+    const ctrl = ctrlRef.current;
+    if (!ctrl) return;
+    if (isPlayingRef.current) ctrl.pause(); else ctrl.play();
   }
 
   /**
-   * Call synchronously inside a user-gesture handler before any async work.
-   * Sets the silent src and plays it to activate THIS element on iOS — the
-   * same element loadAndPlay() will later use. iOS activation is per-element,
-   * so a separate "activator" element does not unlock this one.
-   * The silent WAV has 0 audio samples so nothing is ever heard.
+   * Call synchronously inside a user-gesture handler.
+   * Sends play() to the iframe, which — with the Spotify embed's built-in
+   * allow="autoplay" delegation — establishes sticky activation so the iframe
+   * can play from async contexts (useEffect, etc.) without another gesture.
    */
   function prime() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.src = UNLOCK_SRC;
-    audio.play().catch(() => {});
+    ctrlRef.current?.play();
   }
 
-  return { isPlaying, loadAndPlay, pause, togglePlay, prime };
+  return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };
 }
