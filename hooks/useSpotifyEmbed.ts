@@ -27,11 +27,12 @@ declare global {
 }
 
 export function useAudioPlayer() {
-  const ctrlRef       = useRef<EmbedController | null>(null);
-  const pendingUri    = useRef<string | null>(null);
-  const isPlayingRef  = useRef(false);
-  const userPausedRef = useRef(false);  // true only when user explicitly pauses
-  const retryRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ctrlRef           = useRef<EmbedController | null>(null);
+  const pendingUri        = useRef<string | null>(null);
+  const isPlayingRef      = useRef(false);
+  const userPausedRef     = useRef(false);  // true only when user explicitly pauses
+  const hasRealUriRef     = useRef(false);  // true once a real (non-placeholder) URI has been loaded
+  const retryRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady,   setIsReady]   = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -65,11 +66,7 @@ export function useAudioPlayer() {
           setIsReady(true);
           ctrl.addListener("playback_update", (raw) => {
             const d = (raw as { data?: { isPaused?: boolean } })?.data;
-            if (d !== undefined) {
-              const playing = !d.isPaused;
-              setPlaying(playing);
-              if (playing) clearRetry(); // track started playing — cancel any pending retry
-            }
+            if (d !== undefined) setPlaying(!d.isPaused);
           });
           if (pendingUri.current) {
             const uri = pendingUri.current;
@@ -105,7 +102,7 @@ export function useAudioPlayer() {
   }, []);
 
   /**
-   * Internal: load a URI and play, with an 800ms retry in case play() fires
+   * Internal: load a URI and play, with a 300ms retry in case play() fires
    * before the Spotify embed has buffered the track (common on mobile).
    */
   function _doLoadAndPlay(ctrl: EmbedController, uri: string) {
@@ -121,12 +118,13 @@ export function useAudioPlayer() {
       if (!userPausedRef.current && !isPlayingRef.current) {
         ctrl.play();
       }
-    }, 800);
+    }, 300);
   }
 
   /** Load a Spotify URI and start playing. Queues if the controller isn't ready yet. */
   function loadAndPlay(uri: string | null) {
     if (!uri) return;
+    hasRealUriRef.current = true;
     const ctrl = ctrlRef.current;
     if (!ctrl) { pendingUri.current = uri; return; }
     _doLoadAndPlay(ctrl, uri);
@@ -154,9 +152,17 @@ export function useAudioPlayer() {
    * Sends play() to the iframe, which — with the Spotify embed's built-in
    * allow="autoplay" delegation — establishes sticky activation so the iframe
    * can play from async contexts (useEffect, etc.) without another gesture.
+   *
+   * If no real track has been loaded yet (placeholder is active), immediately
+   * pause after play() so the placeholder track doesn't audibly play on mobile.
    */
   function prime() {
-    ctrlRef.current?.play();
+    const ctrl = ctrlRef.current;
+    if (!ctrl) return;
+    ctrl.play();
+    if (!hasRealUriRef.current) {
+      ctrl.pause();
+    }
   }
 
   return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };
