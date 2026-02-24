@@ -29,18 +29,16 @@ declare global {
 export function useSpotifyEmbed() {
   const controllerRef = useRef<EmbedController | null>(null);
   const pendingUriRef = useRef<string | null>(null);
-  // Whether we *want* the player playing. Used to retry play() after loadUri
-  // causes a transient isPaused:true while the new track buffers.
-  const wantsPlayRef = useRef(false);
+  // Set to true before every loadUri call so the playback_update listener
+  // can fire play() exactly once if Spotify pauses while buffering the new
+  // track. Cleared immediately on use to prevent any retry loop.
+  const playOnLoadRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    // Create the container element directly in document.body so it is always
-    // present in the DOM regardless of which React phase (prompt vs cards) is
-    // currently rendered.  If we relied on a ref that is only attached in the
-    // cards phase, onSpotifyIframeApiReady could fire while the ref is null and
-    // the controller would never be created.
+    // Create the hidden container once — lives in document.body so it exists
+    // regardless of which React phase is currently rendered.
     const container = document.createElement("div");
     container.setAttribute("aria-hidden", "true");
     container.style.cssText =
@@ -60,18 +58,21 @@ export function useSpotifyEmbed() {
           ctrl.addListener("playback_update", (data) => {
             const d = (data as { data?: { isPaused?: boolean } })?.data;
             if (d === undefined) return;
-            const paused = !!d.isPaused;
-            setIsPlaying(!paused);
-            // If the player went paused while we still want playback (e.g.
-            // Spotify briefly pauses when loadUri switches tracks), retry play().
-            if (paused && wantsPlayRef.current) {
+            setIsPlaying(!d.isPaused);
+
+            // One-shot retry: if Spotify reports paused right after a loadUri
+            // (buffering the new track), fire play() once and clear the flag.
+            // The flag is cleared BEFORE calling play() so even if that play()
+            // triggers another isPaused event there is no second retry.
+            if (d.isPaused && playOnLoadRef.current) {
+              playOnLoadRef.current = false;
               ctrl.play();
             }
           });
 
           // Play any URI that was requested before the controller was ready
           if (pendingUriRef.current) {
-            wantsPlayRef.current = true;
+            playOnLoadRef.current = true;
             ctrl.loadUri(pendingUriRef.current);
             ctrl.play();
             pendingUriRef.current = null;
@@ -80,12 +81,10 @@ export function useSpotifyEmbed() {
       );
     }
 
-    // If the IFrame API was already loaded (e.g. HMR / hot-reload), init immediately
     if (window.SpotifyIframeApi) {
       initController(window.SpotifyIframeApi);
     } else {
       window.onSpotifyIframeApiReady = initController;
-
       if (!document.getElementById("spotify-embed-api")) {
         const script = document.createElement("script");
         script.id = "spotify-embed-api";
@@ -98,7 +97,7 @@ export function useSpotifyEmbed() {
     return () => {
       controllerRef.current?.destroy();
       controllerRef.current = null;
-      wantsPlayRef.current = false;
+      playOnLoadRef.current = false;
       if (container.parentNode) container.parentNode.removeChild(container);
       setIsReady(false);
       setIsPlaying(false);
@@ -111,13 +110,18 @@ export function useSpotifyEmbed() {
       pendingUriRef.current = uri;
       return;
     }
-    wantsPlayRef.current = true;
+    // Arm the one-shot retry, then load + play.  If play() is accepted
+    // immediately the retry flag is cleared by the isPaused:false event
+    // (which doesn't match the retry condition). If Spotify responds with
+    // isPaused:true (buffering), the listener fires play() once more.
+    playOnLoadRef.current = true;
     ctrl.loadUri(uri);
     ctrl.play();
   }
 
   function pause() {
-    wantsPlayRef.current = false;
+    // Disarm the retry so a buffering pause doesn't auto-resume.
+    playOnLoadRef.current = false;
     controllerRef.current?.pause();
   }
 
@@ -125,21 +129,18 @@ export function useSpotifyEmbed() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     if (isPlaying) {
-      wantsPlayRef.current = false;
+      playOnLoadRef.current = false;
       ctrl.pause();
     } else {
-      wantsPlayRef.current = true;
       ctrl.play();
     }
   }
 
-  // Call this during a user gesture (e.g. button click) to unlock browser
-  // autoplay. The placeholder track plays briefly until the first real
-  // loadAndPlay switches it.
+  // Call during a user gesture to unlock browser autoplay for the iframe.
+  // The placeholder track plays briefly; loadAndPlay() will switch it.
   function prime() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
-    wantsPlayRef.current = true;
     ctrl.play();
   }
 
