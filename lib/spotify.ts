@@ -65,6 +65,27 @@ export function getDayKey(daysAgo: number, tz = "UTC"): string {
   return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
 }
 
+const MIN_PLAY_MS = 30_000; // skip tracks where the next one started within 30 s
+
+/**
+ * Filter recently-played items by estimated play duration.
+ * Items are sorted ascending by played_at; any track whose successor started
+ * within MIN_PLAY_MS is considered skipped and removed.
+ * The last track in the list always passes (no successor to compare against).
+ */
+function filterByPlayDuration(items: RawTrackItem[]): RawTrackItem[] {
+  if (items.length <= 1) return items;
+  const sorted = [...items].sort(
+    (a, b) => new Date(a.played_at).getTime() - new Date(b.played_at).getTime()
+  );
+  return sorted.filter((item, i) => {
+    const next = sorted[i + 1];
+    if (!next) return true;
+    const gap = new Date(next.played_at).getTime() - new Date(item.played_at).getTime();
+    return gap >= MIN_PLAY_MS;
+  });
+}
+
 // Fetch the 50 most recent played items and group them by YYYY-MM-DD key in the given timezone.
 export async function getRecentTracksGrouped(
   accessToken: string,
@@ -77,7 +98,7 @@ export async function getRecentTracksGrouped(
   if (!data?.items?.length) return {};
 
   const grouped: Record<string, Track[]> = {};
-  for (const item of data.items as RawTrackItem[]) {
+  for (const item of filterByPlayDuration(data.items as RawTrackItem[])) {
     const key = dateStringInTz(new Date(item.played_at), tz);
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(rawItemToTrack(item));
@@ -96,9 +117,10 @@ export async function getYesterdayTracks(accessToken: string, tz = "UTC"): Promi
 
   if (!data.items?.length) return [];
 
-  return (data.items as RawTrackItem[])
-    .filter((item) => dateStringInTz(new Date(item.played_at), tz) === yesterdayKey)
-    .map(rawItemToTrack);
+  const yesterdayItems = (data.items as RawTrackItem[]).filter(
+    (item) => dateStringInTz(new Date(item.played_at), tz) === yesterdayKey
+  );
+  return filterByPlayDuration(yesterdayItems).map(rawItemToTrack);
 }
 
 // Get genres for a list of artist IDs (batched, max 50 per request)

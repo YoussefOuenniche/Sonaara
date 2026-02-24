@@ -58,6 +58,7 @@ export function useSpotifyPlayer(accessToken: string | null) {
     }
 
     const initPlayer = () => {
+      if (playerRef.current) return; // Guard against double initialisation
       const player = new window.Spotify.Player({
         name: "Sonaara Discover",
         getOAuthToken: (cb) => cb(accessToken),
@@ -94,8 +95,8 @@ export function useSpotifyPlayer(accessToken: string | null) {
         setState((s) => ({ ...s, error: "Spotify Premium required for playback" }));
       });
 
+      playerRef.current = player; // Set before connect so guard works immediately
       player.connect();
-      playerRef.current = player;
     };
 
     if (window.Spotify) {
@@ -106,6 +107,7 @@ export function useSpotifyPlayer(accessToken: string | null) {
 
     return () => {
       playerRef.current?.disconnect();
+      playerRef.current = null;
       deviceIdRef.current = null;
     };
   }, [accessToken]);

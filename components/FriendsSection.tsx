@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 
 import type { UserRecord } from "@/lib/store";
-import { formatRelativeTime } from "@/lib/spotify";
 
 const LS_KEY = "sonaara_friends";
 
@@ -309,11 +308,6 @@ function FriendCard({
             </div>
           ) : (
             <p className="text-white/20 text-xs">No recent track</p>
-          )}
-          {data.updatedAt && (
-            <p className="text-white/15 text-xs mt-0.5">
-              updated {formatRelativeTime(data.updatedAt)}
-            </p>
           )}
         </div>
 
