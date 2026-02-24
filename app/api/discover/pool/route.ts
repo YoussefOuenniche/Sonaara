@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
 import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
-import { getLikedTracks, getTrackPreviews } from "@/lib/spotify";
+import { getLikedTracks } from "@/lib/spotify";
 import { getUmbrellaKeywords } from "@/lib/genres";
 import type { DiscoverTrack } from "@/types";
 
@@ -120,19 +120,6 @@ export async function GET(request: NextRequest) {
         pool.push(queues[i][ptrs[i]++]);
         hasMore = true;
       }
-    }
-  }
-
-  // Patch any tracks missing previewUrl (stale cache) — all chunks fetched in parallel
-  const missingPreviewIds = pool.filter((t) => t.previewUrl === undefined).map((t) => t.id);
-  if (missingPreviewIds.length > 0) {
-    const previews = await getTrackPreviews(missingPreviewIds, accessToken).catch(() => new Map<string, string | null>());
-    if (previews.size > 0) {
-      pool = pool.map((t) =>
-        t.previewUrl === undefined && previews.has(t.id)
-          ? { ...t, previewUrl: previews.get(t.id) ?? null }
-          : t
-      );
     }
   }
 

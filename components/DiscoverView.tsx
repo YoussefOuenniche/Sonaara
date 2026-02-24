@@ -5,6 +5,7 @@ import Image from "next/image";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { DiscoverTrack } from "@/types";
 import { GENRE_UMBRELLAS, mapToUmbrellas } from "@/lib/genres";
+import { useSpotifyEmbed } from "@/hooks/useSpotifyEmbed";
 
 
 type Phase = "prompt" | "cards";
@@ -26,8 +27,7 @@ export function DiscoverView() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { containerRef: embedContainerRef, isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay } = useSpotifyEmbed();
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -68,26 +68,13 @@ export function DiscoverView() {
 
   const current = pool[index] ?? null;
 
-  // Audio playback — 30-second preview via HTML Audio
+  // Load and play via the Spotify Embed IFrame API whenever the card changes
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.onended = null;
-      audioRef.current = null;
+    if (current && embedReady) {
+      loadAndPlay(current.uri);
     }
-    setIsPlaying(false);
-
-    if (!current) return;
-
-    if (!current.previewUrl) return; // No preview — show card silently, play button disabled
-
-    const audio = new Audio(current.previewUrl);
-    audioRef.current = audio;
-    audio.volume = 0.9;
-    audio.play().then(() => setIsPlaying(true)).catch(() => {});
-    audio.onended = () => setIsPlaying(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id]);
+  }, [current?.id, embedReady]);
 
   // Clear enter-direction after the browser paints the starting position so the CSS transition runs
   useEffect(() => {
@@ -113,12 +100,7 @@ export function DiscoverView() {
   }
 
   function handleChangeGenre() {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.onended = null;
-      audioRef.current = null;
-    }
-    setIsPlaying(false);
+    embedPause();
     setPhase("prompt");
     setPool([]);
     setDone(false);
@@ -158,12 +140,7 @@ export function DiscoverView() {
     const next = index + 1;
     if (next >= pool.length) {
       setDone(true);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.onended = null;
-        audioRef.current = null;
-      }
-      setIsPlaying(false);
+      embedPause();
       return;
     }
     setEnterFromDir(dir === "right" ? "left" : "right");
@@ -197,14 +174,7 @@ export function DiscoverView() {
   }
 
   function togglePlay() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play().then(() => setIsPlaying(true)).catch(() => {});
-    }
+    embedTogglePlay();
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -467,6 +437,13 @@ export function DiscoverView() {
         </button>
       </header>
 
+      {/* Hidden Spotify Embed container — positioned off-screen so audio works without showing Spotify UI */}
+      <div
+        ref={embedContainerRef}
+        aria-hidden="true"
+        style={{ position: "fixed", bottom: 0, left: "-9999px", width: "300px", height: "80px" }}
+      />
+
       {/* Card area */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
         {/* Ambient background */}
@@ -593,14 +570,14 @@ export function DiscoverView() {
               {/* Play/pause — white */}
               <button
                 onClick={() => { triggerPlayAnim(); togglePlay(); }}
-                disabled={!current?.previewUrl}
+                disabled={!embedReady}
                 className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-100 disabled:opacity-30"
                 style={{
                   background: playAnim ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)",
                   transform: playAnim ? "scale(0.92)" : "scale(1)",
                 }}
               >
-                {isPlaying ? (
+                {embedPlaying ? (
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="white">
                     <rect x="2" y="2" width="5" height="14" rx="1.5" />
                     <rect x="11" y="2" width="5" height="14" rx="1.5" />
@@ -638,6 +615,11 @@ export function DiscoverView() {
                 </svg>
                 undo
               </button>
+            )}
+
+            {/* Player loading indicator */}
+            {!embedReady && (
+              <p className="mt-4 text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>connecting player…</p>
             )}
           </div>
         )}

@@ -6,6 +6,7 @@ const SCOPES = [
   "user-library-read",
   "user-library-modify",
   "streaming",
+  "user-modify-playback-state",
 ].join(" ");
 
 export async function GET() {
