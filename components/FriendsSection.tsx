@@ -86,6 +86,7 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
     setFriendIds(next);
     saveFriendIds(next);
     setInput("");
+    setShowModal(false);
   }
 
   function removeFriend(id: string) {
