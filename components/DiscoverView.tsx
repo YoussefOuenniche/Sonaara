@@ -5,7 +5,7 @@ import Image from "next/image";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { DiscoverTrack } from "@/types";
 import { GENRE_UMBRELLAS } from "@/lib/genres";
-import { useAudioPlayer } from "@/hooks/useSpotifyEmbed";
+import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
 
 
 type Phase = "prompt" | "cards";
@@ -14,7 +14,7 @@ function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
 
-export function DiscoverView() {
+export function DiscoverView({ accessToken }: { accessToken: string }) {
   const [phase, setPhase] = useState<Phase>("prompt");
   const [genre, setGenre] = useState("anything");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -31,7 +31,7 @@ export function DiscoverView() {
   const [done, setDone] = useState(false);
   const [noTracksFromServer, setNoTracksFromServer] = useState(false);
   const exitingRef = useRef(false);
-  const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useAudioPlayer();
+  const { state: playerState, playTrack, togglePlay: playerTogglePlay, activateElement } = useSpotifyPlayer(accessToken);
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -77,12 +77,11 @@ export function DiscoverView() {
 
   const current = pool[index] ?? null;
 
-  // Load and play whenever the card changes.
-  // loadAndPlay handles lazy controller init internally — no need to wait for embedReady.
+  // Load and play whenever the card changes (requires player to be ready).
   useEffect(() => {
-    if (current) loadAndPlay(current.uri);
+    if (current && playerState.isReady) playTrack(current.uri);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id]);
+  }, [current?.id, playerState.isReady]);
 
   // Show spinner until the first track actually starts playing (max 2s fallback)
   const firstTrackId = pool[0]?.id ?? null;
@@ -94,11 +93,11 @@ export function DiscoverView() {
   }, [firstTrackId]);
 
   useEffect(() => {
-    if (embedPlaying && !firstPlayDoneRef.current) {
+    if (playerState.isPlaying && !firstPlayDoneRef.current) {
       firstPlayDoneRef.current = true;
       setWaitingForFirstPlay(false);
     }
-  }, [embedPlaying]);
+  }, [playerState.isPlaying]);
 
   // Clear enter-direction after the browser paints the starting position so the CSS transition runs
   useEffect(() => {
@@ -119,15 +118,12 @@ export function DiscoverView() {
   }, [phase, availableGenres]);
 
   function handleSubmit() {
-    // prime() synchronously in the gesture — plays a silent WAV to establish
-    // iOS audio context activation so the Spotify embed can autoplay the first track.
-    embedPrime();
+    activateElement(); // iOS audio activation
     setPhase("cards");
     fetchPool(genre);
   }
 
   function handleChangeGenre() {
-    embedPause();
     setPhase("prompt");
     setPool([]);
     setDone(false);
@@ -141,10 +137,6 @@ export function DiscoverView() {
   async function triggerExit(dir: "left" | "right") {
     if (exitingRef.current || !current) return;
     exitingRef.current = true;
-    // Call play() synchronously while still in the user-gesture context.
-    // With the embed's allow="autoplay" delegation this extends sticky
-    // activation into the iframe so the next loadUri+play() succeeds.
-    embedPrime();
 
     // Fire API immediately — non-blocking
     if (dir === "right") {
@@ -174,7 +166,6 @@ export function DiscoverView() {
     const next = index + 1;
     if (next >= pool.length) {
       setDone(true);
-      embedPause();
       return;
     }
     setEnterFromDir(dir === "right" ? "left" : "right");
@@ -208,7 +199,7 @@ export function DiscoverView() {
   }
 
   function togglePlay() {
-    embedTogglePlay();
+    playerTogglePlay();
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -614,14 +605,14 @@ export function DiscoverView() {
               {/* Play/pause — white */}
               <button
                 onClick={() => { triggerPlayAnim(); togglePlay(); }}
-                disabled={!embedReady}
+                disabled={!playerState.isReady}
                 className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-100 disabled:opacity-30"
                 style={{
                   background: playAnim ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)",
                   transform: playAnim ? "scale(0.92)" : "scale(1)",
                 }}
               >
-                {embedPlaying ? (
+                {playerState.isPlaying ? (
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="white">
                     <rect x="2" y="2" width="5" height="14" rx="1.5" />
                     <rect x="11" y="2" width="5" height="14" rx="1.5" />
