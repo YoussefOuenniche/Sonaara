@@ -2,39 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 
-interface EmbedController {
-  loadUri: (uri: string) => void;
-  play: () => void;
-  pause: () => void;
-  addListener: (event: string, cb: (data: unknown) => void) => void;
-  removeListener: (event: string) => void;
-  destroy: () => void;
-}
-
-interface SpotifyIFrameAPI {
-  createController: (
-    element: HTMLElement,
-    options: { uri: string; width: string | number; height: string | number },
-    callback: (controller: EmbedController) => void
-  ) => void;
-}
-
-declare global {
-  interface Window {
-    onSpotifyIframeApiReady?: (api: SpotifyIFrameAPI) => void;
-    SpotifyIframeApi?: SpotifyIFrameAPI;
-  }
-}
+// Silent WAV — played via a dedicated activator element during the first user
+// gesture so iOS permanently unlocks audio for this page without touching the
+// main player's state or src.
+const SILENT_AUDIO =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
 export function useSpotifyEmbed() {
-  const controllerRef = useRef<EmbedController | null>(null);
-  const pendingUriRef = useRef<string | null>(null);
-  // Ref mirrors isPlaying state so togglePlay always reads the latest value,
-  // even if React hasn't re-rendered yet (critical on slower mobile CPUs).
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const activatorRef = useRef<HTMLAudioElement | null>(null);
+  // Ref mirrors isPlaying so togglePlay always reads the latest value even
+  // if React hasn't flushed the state update yet (avoids stale-closure bug).
   const isPlayingRef = useRef(false);
-  // Single delayed retry — fires 800 ms after loadUri so it lands after both
-  // the "stopping old track" and "buffering new track" isPaused:true events.
-  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -43,125 +22,67 @@ export function useSpotifyEmbed() {
     setIsPlaying(v);
   }
 
-  function clearRetry() {
-    if (retryTimeoutRef.current !== null) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-  }
-
   useEffect(() => {
-    // Create the hidden container once — lives in document.body so it exists
-    // regardless of which React phase is currently rendered.
-    const container = document.createElement("div");
-    container.setAttribute("aria-hidden", "true");
-    container.style.cssText =
-      "position:fixed;bottom:0;left:-9999px;width:300px;height:80px;";
-    document.body.appendChild(container);
+    const audio = new Audio();
+    audioRef.current = audio;
 
-    function initController(IFrameAPI: SpotifyIFrameAPI) {
-      if (controllerRef.current) return;
+    // Separate element used only to unlock iOS audio — never audible.
+    const activator = new Audio(SILENT_AUDIO);
+    activator.volume = 0;
+    activatorRef.current = activator;
 
-      IFrameAPI.createController(
-        container,
-        { uri: "spotify:track:4iV5W9uYEdYUVa79Axb7Rh", width: "100%", height: 80 },
-        (ctrl) => {
-          controllerRef.current = ctrl;
-          setIsReady(true);
+    setIsReady(true);
 
-          ctrl.addListener("playback_update", (data) => {
-            const d = (data as { data?: { isPaused?: boolean } })?.data;
-            if (d === undefined) return;
-            setPlayingState(!d.isPaused);
-            // Track is playing — cancel any pending retry.
-            if (!d.isPaused) clearRetry();
-          });
+    const onPlaying = () => setPlayingState(true);
+    const onPause  = () => setPlayingState(false);
+    const onEnded  = () => setPlayingState(false);
 
-          // Play any URI that was requested before the controller was ready.
-          if (pendingUriRef.current) {
-            const uri = pendingUriRef.current;
-            pendingUriRef.current = null;
-            startPlayback(ctrl, uri);
-          }
-        }
-      );
-    }
-
-    if (window.SpotifyIframeApi) {
-      initController(window.SpotifyIframeApi);
-    } else {
-      window.onSpotifyIframeApiReady = initController;
-      if (!document.getElementById("spotify-embed-api")) {
-        const script = document.createElement("script");
-        script.id = "spotify-embed-api";
-        script.src = "https://open.spotify.com/embed/iframe-api/v1";
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("pause",   onPause);
+    audio.addEventListener("ended",   onEnded);
 
     return () => {
-      clearRetry();
-      controllerRef.current?.destroy();
-      controllerRef.current = null;
-      if (container.parentNode) container.parentNode.removeChild(container);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("pause",   onPause);
+      audio.removeEventListener("ended",   onEnded);
+      audio.pause();
+      audio.src = "";
+      audioRef.current   = null;
+      activatorRef.current = null;
       setIsReady(false);
       setPlayingState(false);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load a new URI and ensure it plays. Calls play() immediately then schedules
-  // a single fallback play() 800 ms later — by that point Spotify has finished
-  // both the "stop old track" and "buffer new track" transitions, so the
-  // fallback call will either start playback or be a no-op if already playing.
-  function startPlayback(ctrl: EmbedController, uri: string) {
-    clearRetry();
-    ctrl.loadUri(uri);
-    ctrl.play();
-    retryTimeoutRef.current = setTimeout(() => {
-      retryTimeoutRef.current = null;
-      ctrl.play();
-    }, 800);
-  }
-
-  function loadAndPlay(uri: string) {
-    const ctrl = controllerRef.current;
-    if (!ctrl) {
-      pendingUriRef.current = uri;
-      return;
-    }
-    startPlayback(ctrl, uri);
+  // Set a new preview URL and start playing.
+  // A null previewUrl (track has no 30s preview) is silently ignored.
+  function loadAndPlay(previewUrl: string | null) {
+    const audio = audioRef.current;
+    if (!audio || !previewUrl) return;
+    audio.pause();
+    audio.src = previewUrl;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
   }
 
   function pause() {
-    clearRetry();
-    controllerRef.current?.pause();
+    audioRef.current?.pause();
   }
 
   function togglePlay() {
-    const ctrl = controllerRef.current;
-    if (!ctrl) return;
-    // Read from ref, not the React state closure, to get the latest value
-    // even if the component hasn't re-rendered yet (avoids mobile stale-state bug).
-    if (isPlayingRef.current) {
-      clearRetry();
-      ctrl.pause();
-    } else {
-      ctrl.play();
-    }
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlayingRef.current) audio.pause();
+    else audio.play().catch(() => {});
   }
 
-  // Call during a user gesture to unlock browser autoplay for the iframe.
-  // When nothing is playing (initial unlock before pool loads), play()+pause()
-  // silences the placeholder track without making it audible.
-  // When a real track is already playing (swipe transitions), just play() keeps
-  // the iOS activation window alive without interrupting playback.
+  // Call during a user gesture to unlock iOS audio for the entire page session.
+  // The activator element plays a silent clip — no sound, but iOS permanently
+  // marks this page as audio-activated so all subsequent play() calls succeed.
   function prime() {
-    const ctrl = controllerRef.current;
-    if (!ctrl) return;
-    ctrl.play();
-    if (!isPlayingRef.current) ctrl.pause();
+    const act = activatorRef.current;
+    if (!act) return;
+    act.play().then(() => act.pause()).catch(() => {});
   }
 
   return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };

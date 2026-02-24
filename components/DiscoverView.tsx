@@ -71,10 +71,10 @@ export function DiscoverView() {
 
   const current = pool[index] ?? null;
 
-  // Load and play via the Spotify Embed IFrame API whenever the card changes
+  // Load and play the 30-second preview whenever the card changes.
   useEffect(() => {
     if (current && embedReady) {
-      loadAndPlay(current.uri);
+      loadAndPlay(current.previewUrl);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, embedReady]);
@@ -133,9 +133,6 @@ export function DiscoverView() {
   async function triggerExit(dir: "left" | "right") {
     if (exitingRef.current || !current) return;
     exitingRef.current = true;
-    // Re-establish iOS audio session synchronously during the user gesture so
-    // the next loadUri + play() call (280 ms later) is within the activation window.
-    embedPrime();
 
     // Fire API immediately — non-blocking
     if (dir === "right") {
