@@ -29,12 +29,18 @@ declare global {
 export function useSpotifyEmbed() {
   const controllerRef = useRef<EmbedController | null>(null);
   const pendingUriRef = useRef<string | null>(null);
-  // Set to true before every loadUri call so the playback_update listener
-  // can fire play() exactly once if Spotify pauses while buffering the new
-  // track. Cleared immediately on use to prevent any retry loop.
-  const playOnLoadRef = useRef(false);
+  // Interval that retries play() while the new track is buffering.
+  // Cleared as soon as isPaused:false is received or pause() is called.
+  const retryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  function clearRetry() {
+    if (retryIntervalRef.current !== null) {
+      clearInterval(retryIntervalRef.current);
+      retryIntervalRef.current = null;
+    }
+  }
 
   useEffect(() => {
     // Create the hidden container once — lives in document.body so it exists
@@ -60,22 +66,15 @@ export function useSpotifyEmbed() {
             if (d === undefined) return;
             setIsPlaying(!d.isPaused);
 
-            // One-shot retry: if Spotify reports paused right after a loadUri
-            // (buffering the new track), fire play() once and clear the flag.
-            // The flag is cleared BEFORE calling play() so even if that play()
-            // triggers another isPaused event there is no second retry.
-            if (d.isPaused && playOnLoadRef.current) {
-              playOnLoadRef.current = false;
-              ctrl.play();
-            }
+            // Once the track is actually playing, stop retrying.
+            if (!d.isPaused) clearRetry();
           });
 
           // Play any URI that was requested before the controller was ready
           if (pendingUriRef.current) {
-            playOnLoadRef.current = true;
-            ctrl.loadUri(pendingUriRef.current);
-            ctrl.play();
+            const uri = pendingUriRef.current;
             pendingUriRef.current = null;
+            startPlayback(ctrl, uri);
           }
         }
       );
@@ -95,14 +94,31 @@ export function useSpotifyEmbed() {
     }
 
     return () => {
+      clearRetry();
       controllerRef.current?.destroy();
       controllerRef.current = null;
-      playOnLoadRef.current = false;
       if (container.parentNode) container.parentNode.removeChild(container);
       setIsReady(false);
       setIsPlaying(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load a URI and keep retrying play() every 300 ms until the track is
+  // actually playing (isPaused:false) — handles both the "stopping old track"
+  // and "buffering new track" isPaused:true events that Spotify fires.
+  // Gives up after 10 attempts (~3 s) to avoid running forever.
+  function startPlayback(ctrl: EmbedController, uri: string) {
+    clearRetry();
+    ctrl.loadUri(uri);
+    ctrl.play();
+    let attempts = 0;
+    retryIntervalRef.current = setInterval(() => {
+      attempts++;
+      ctrl.play();
+      if (attempts >= 10) clearRetry();
+    }, 300);
+  }
 
   function loadAndPlay(uri: string) {
     const ctrl = controllerRef.current;
@@ -110,18 +126,11 @@ export function useSpotifyEmbed() {
       pendingUriRef.current = uri;
       return;
     }
-    // Arm the one-shot retry, then load + play.  If play() is accepted
-    // immediately the retry flag is cleared by the isPaused:false event
-    // (which doesn't match the retry condition). If Spotify responds with
-    // isPaused:true (buffering), the listener fires play() once more.
-    playOnLoadRef.current = true;
-    ctrl.loadUri(uri);
-    ctrl.play();
+    startPlayback(ctrl, uri);
   }
 
   function pause() {
-    // Disarm the retry so a buffering pause doesn't auto-resume.
-    playOnLoadRef.current = false;
+    clearRetry();
     controllerRef.current?.pause();
   }
 
@@ -129,7 +138,7 @@ export function useSpotifyEmbed() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     if (isPlaying) {
-      playOnLoadRef.current = false;
+      clearRetry();
       ctrl.pause();
     } else {
       ctrl.play();
