@@ -77,11 +77,12 @@ export function DiscoverView() {
 
   const current = pool[index] ?? null;
 
-  // Load and play whenever the card changes (wait for the controller to be ready).
+  // Load and play whenever the card changes.
+  // loadAndPlay handles lazy controller init internally — no need to wait for embedReady.
   useEffect(() => {
-    if (current && embedReady) loadAndPlay(current.uri);
+    if (current) loadAndPlay(current.uri);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, embedReady]);
+  }, [current?.id]);
 
   // Show spinner until the first track actually starts playing (max 2s fallback)
   const firstTrackId = pool[0]?.id ?? null;
