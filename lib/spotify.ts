@@ -197,17 +197,24 @@ export function aggregateAudioFeatures(
   };
 }
 
-// Batch-fetch preview URLs for a list of track IDs (50 per request)
+// Batch-fetch preview URLs for a list of track IDs — all chunks in parallel
 export async function getTrackPreviews(
   trackIds: string[],
   accessToken: string
 ): Promise<Map<string, string | null>> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < trackIds.length; i += 50) chunks.push(trackIds.slice(i, i + 50));
+
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      spotifyFetch(`/tracks?ids=${chunk.join(",")}`, accessToken).catch(() => null) as Promise<{
+        tracks: Array<{ id: string; preview_url: string | null } | null>;
+      } | null>
+    )
+  );
+
   const previewMap = new Map<string, string | null>();
-  for (let i = 0; i < trackIds.length; i += 50) {
-    const chunk = trackIds.slice(i, i + 50);
-    const data = await spotifyFetch(`/tracks?ids=${chunk.join(",")}`, accessToken).catch(() => null) as {
-      tracks: Array<{ id: string; preview_url: string | null } | null>;
-    } | null;
+  for (const data of results) {
     if (data?.tracks) {
       for (const t of data.tracks) {
         if (t?.id) previewMap.set(t.id, t.preview_url ?? null);

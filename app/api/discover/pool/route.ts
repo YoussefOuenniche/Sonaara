@@ -77,19 +77,6 @@ export async function GET(request: NextRequest) {
       }));
   }
 
-  // Patch pool tracks missing previewUrl — old cache entries lack this field
-  const missingPreviewIds = pool.filter((t) => t.previewUrl === undefined).map((t) => t.id);
-  if (missingPreviewIds.length > 0) {
-    const previews = await getTrackPreviews(missingPreviewIds, accessToken).catch(() => new Map<string, string | null>());
-    if (previews.size > 0) {
-      pool = pool.map((t) =>
-        t.previewUrl === undefined && previews.has(t.id)
-          ? { ...t, previewUrl: previews.get(t.id) ?? null }
-          : t
-      );
-    }
-  }
-
   // Filter by umbrella genre — expand to all matching micro-genre keywords
   if (genre && genre !== "anything") {
     const keywords = getUmbrellaKeywords(genre.toLowerCase());
@@ -133,6 +120,20 @@ export async function GET(request: NextRequest) {
         pool.push(queues[i][ptrs[i]++]);
         hasMore = true;
       }
+    }
+  }
+
+  // Cap to 100 tracks — user won't see more per session — then patch missing previewUrls in parallel
+  pool = pool.slice(0, 100);
+  const missingPreviewIds = pool.filter((t) => t.previewUrl === undefined).map((t) => t.id);
+  if (missingPreviewIds.length > 0) {
+    const previews = await getTrackPreviews(missingPreviewIds, accessToken).catch(() => new Map<string, string | null>());
+    if (previews.size > 0) {
+      pool = pool.map((t) =>
+        t.previewUrl === undefined && previews.has(t.id)
+          ? { ...t, previewUrl: previews.get(t.id) ?? null }
+          : t
+      );
     }
   }
 
