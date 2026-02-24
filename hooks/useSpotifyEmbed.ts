@@ -2,17 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Silent WAV played through a dedicated element during the "Go" button tap
-// so iOS permanently unlocks audio for this page. The main player element
-// is never touched during unlock, so there are no src-race conditions.
+// A 0-sample silent WAV — no sound at any volume, but playing it via a
+// user gesture permanently activates this audio element on iOS so all
+// subsequent play() calls succeed from any async context.
 const UNLOCK_SRC =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
 export function useAudioPlayer() {
-  const audioRef  = useRef<HTMLAudioElement | null>(null);
-  const unlockRef = useRef<HTMLAudioElement | null>(null);
-  // Ref mirrors state so togglePlay always reads the latest value even when
-  // React hasn't flushed the re-render yet (avoids stale-closure on mobile).
+  const audioRef    = useRef<HTMLAudioElement | null>(null);
   const isPlayingRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -22,12 +19,8 @@ export function useAudioPlayer() {
   }
 
   useEffect(() => {
-    const audio  = new Audio();
-    const unlock = new Audio(UNLOCK_SRC);
-    unlock.volume = 0;
-
-    audioRef.current  = audio;
-    unlockRef.current = unlock;
+    const audio = new Audio();
+    audioRef.current = audio;
 
     const onPlaying = () => setPlaying(true);
     const onPause   = () => setPlaying(false);
@@ -43,12 +36,11 @@ export function useAudioPlayer() {
       audio.removeEventListener("ended",   onEnded);
       audio.pause();
       audio.src     = "";
-      audioRef.current  = null;
-      unlockRef.current = null;
+      audioRef.current = null;
     };
   }, []);
 
-  /** Load a preview URL and begin playback. Null = no preview available, no-op. */
+  /** Replace the current track and start playing. Null = no preview, no-op. */
   function loadAndPlay(previewUrl: string | null) {
     const audio = audioRef.current;
     if (!audio || !previewUrl) return;
@@ -68,13 +60,17 @@ export function useAudioPlayer() {
   }
 
   /**
-   * Call synchronously inside a user-gesture handler (e.g. the "Go" button tap)
-   * before any async work begins. Plays a zero-volume silent clip to permanently
-   * unlock this page's audio on iOS — all subsequent play() calls then succeed
-   * from any context (useEffect, setTimeout, etc.).
+   * Call synchronously inside a user-gesture handler before any async work.
+   * Sets the silent src and plays it to activate THIS element on iOS — the
+   * same element loadAndPlay() will later use. iOS activation is per-element,
+   * so a separate "activator" element does not unlock this one.
+   * The silent WAV has 0 audio samples so nothing is ever heard.
    */
   function prime() {
-    unlockRef.current?.play().then(() => unlockRef.current?.pause()).catch(() => {});
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.src = UNLOCK_SRC;
+    audio.play().catch(() => {});
   }
 
   return { isPlaying, loadAndPlay, pause, togglePlay, prime };
