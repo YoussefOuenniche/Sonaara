@@ -67,18 +67,25 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
       for (const u of json.users) map[u.userId] = u;
       setFriendData(map);
 
-      // Then refresh lastTrack in the background using stored refresh tokens
-      fetch(`/api/friends/refresh?ids=${ids.join(",")}`)
-        .then((r) => r.json())
-        .then((fresh: { users: UserRecord[] }) => {
-          if (!fresh.users?.length) return;
-          setFriendData((prev) => {
-            const next = { ...prev };
-            for (const u of fresh.users) next[u.userId] = u;
-            return next;
-          });
-        })
-        .catch(() => {});
+      // Helper to merge fresh users into state
+      const applyFresh = (fresh: { users: UserRecord[] }) => {
+        if (!fresh.users?.length) return;
+        setFriendData((prev) => {
+          const next = { ...prev };
+          for (const u of fresh.users) next[u.userId] = u;
+          return next;
+        });
+      };
+
+      const idsParam = ids.join(",");
+
+      // Fast: update lastTrack using stored refresh tokens (~1-2s)
+      fetch(`/api/friends/refresh?ids=${idsParam}`)
+        .then((r) => r.json()).then(applyFresh).catch(() => {});
+
+      // Slow: generate any missing signatures for yesterday (~5-10s, only runs when needed)
+      fetch(`/api/friends/signatures?ids=${idsParam}`)
+        .then((r) => r.json()).then(applyFresh).catch(() => {});
     } catch {
       // non-fatal
     } finally {
