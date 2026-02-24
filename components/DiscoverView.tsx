@@ -29,6 +29,7 @@ export function DiscoverView() {
   const [waitingForFirstPlay, setWaitingForFirstPlay] = useState(false);
   const firstPlayDoneRef = useRef(false);
   const [done, setDone] = useState(false);
+  const [noTracksFromServer, setNoTracksFromServer] = useState(false);
   const exitingRef = useRef(false);
   const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useAudioPlayer();
 
@@ -60,7 +61,12 @@ export function DiscoverView() {
       const json = await res.json() as { tracks: DiscoverTrack[]; friendCount?: number };
       setPool(json.tracks ?? []);
       setFriendCount(json.friendCount ?? 0);
-      if (!json.tracks?.length) setDone(true);
+      if (!json.tracks?.length) {
+        setNoTracksFromServer(true);
+        setDone(true);
+      } else {
+        setNoTracksFromServer(false);
+      }
     } catch {
       setPool([]);
       setDone(true);
@@ -122,6 +128,7 @@ export function DiscoverView() {
     setPhase("prompt");
     setPool([]);
     setDone(false);
+    setNoTracksFromServer(false);
     setIndex(0);
     setAvailableGenres(null);
     firstPlayDoneRef.current = false;
@@ -487,10 +494,21 @@ export function DiscoverView() {
         {!loading && !waitingForFirstPlay && done && (
           <div className="relative z-10 text-center px-6">
             <p className="text-4xl mb-4">🎵</p>
-            <p className="text-white text-lg font-semibold">You&apos;re all caught up</p>
-            <p className="text-white/40 text-sm mt-2">
-              No more {genreLabel !== "Anything" ? genreLabel + " " : ""}songs to discover right now.
-            </p>
+            {noTracksFromServer && genre !== "anything" ? (
+              <>
+                <p className="text-white text-lg font-semibold">
+                  Your friends don&apos;t listen to {genreLabel} yet
+                </p>
+                <p className="text-white/40 text-sm mt-2">Try a different genre or check back later.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-white text-lg font-semibold">You&apos;re all caught up</p>
+                <p className="text-white/40 text-sm mt-2">
+                  No more {genreLabel !== "Anything" ? genreLabel + " " : ""}songs to discover right now.
+                </p>
+              </>
+            )}
             <div className="flex gap-3 justify-center mt-6">
               <button
                 onClick={() => fetchPool(genre)}

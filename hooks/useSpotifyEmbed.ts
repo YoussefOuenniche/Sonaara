@@ -27,15 +27,24 @@ declare global {
 }
 
 export function useAudioPlayer() {
-  const ctrlRef     = useRef<EmbedController | null>(null);
-  const pendingUri  = useRef<string | null>(null);
-  const isPlayingRef = useRef(false);
+  const ctrlRef       = useRef<EmbedController | null>(null);
+  const pendingUri    = useRef<string | null>(null);
+  const isPlayingRef  = useRef(false);
+  const userPausedRef = useRef(false);  // true only when user explicitly pauses
+  const retryRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady,   setIsReady]   = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   function setPlaying(v: boolean) {
     isPlayingRef.current = v;
     setIsPlaying(v);
+  }
+
+  function clearRetry() {
+    if (retryRef.current !== null) {
+      clearTimeout(retryRef.current);
+      retryRef.current = null;
+    }
   }
 
   useEffect(() => {
@@ -56,13 +65,16 @@ export function useAudioPlayer() {
           setIsReady(true);
           ctrl.addListener("playback_update", (raw) => {
             const d = (raw as { data?: { isPaused?: boolean } })?.data;
-            if (d !== undefined) setPlaying(!d.isPaused);
+            if (d !== undefined) {
+              const playing = !d.isPaused;
+              setPlaying(playing);
+              if (playing) clearRetry(); // track started playing — cancel any pending retry
+            }
           });
           if (pendingUri.current) {
             const uri = pendingUri.current;
             pendingUri.current = null;
-            ctrl.loadUri(uri);
-            ctrl.play();
+            _doLoadAndPlay(ctrl, uri);
           }
         }
       );
@@ -82,6 +94,7 @@ export function useAudioPlayer() {
     }
 
     return () => {
+      clearRetry();
       ctrlRef.current?.destroy();
       ctrlRef.current = null;
       container.parentNode?.removeChild(container);
@@ -91,23 +104,49 @@ export function useAudioPlayer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Internal: load a URI and play, with an 800ms retry in case play() fires
+   * before the Spotify embed has buffered the track (common on mobile).
+   */
+  function _doLoadAndPlay(ctrl: EmbedController, uri: string) {
+    clearRetry();
+    userPausedRef.current = false;
+    ctrl.loadUri(uri);
+    ctrl.play();
+    // On mobile, play() may fire before Spotify has finished loading the track.
+    // Schedule a retry — it is cancelled automatically if the playback_update
+    // event fires with isPaused:false (track is already playing).
+    retryRef.current = setTimeout(() => {
+      retryRef.current = null;
+      if (!userPausedRef.current && !isPlayingRef.current) {
+        ctrl.play();
+      }
+    }, 800);
+  }
+
   /** Load a Spotify URI and start playing. Queues if the controller isn't ready yet. */
   function loadAndPlay(uri: string | null) {
     if (!uri) return;
     const ctrl = ctrlRef.current;
     if (!ctrl) { pendingUri.current = uri; return; }
-    ctrl.loadUri(uri);
-    ctrl.play();
+    _doLoadAndPlay(ctrl, uri);
   }
 
   function pause() {
+    clearRetry();
+    userPausedRef.current = true;
     ctrlRef.current?.pause();
   }
 
   function togglePlay() {
     const ctrl = ctrlRef.current;
     if (!ctrl) return;
-    if (isPlayingRef.current) ctrl.pause(); else ctrl.play();
+    if (isPlayingRef.current) {
+      pause();
+    } else {
+      userPausedRef.current = false;
+      ctrl.play();
+    }
   }
 
   /**
