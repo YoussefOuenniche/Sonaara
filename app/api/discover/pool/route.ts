@@ -123,8 +123,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Cap to 100 tracks — user won't see more per session — then patch missing previewUrls in parallel
-  pool = pool.slice(0, 100);
+  // Patch any tracks missing previewUrl (stale cache) — all chunks fetched in parallel
   const missingPreviewIds = pool.filter((t) => t.previewUrl === undefined).map((t) => t.id);
   if (missingPreviewIds.length > 0) {
     const previews = await getTrackPreviews(missingPreviewIds, accessToken).catch(() => new Map<string, string | null>());
