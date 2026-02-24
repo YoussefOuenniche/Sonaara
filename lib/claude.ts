@@ -7,15 +7,10 @@ export async function generateSignature(
   tracks: TrackWithGenres[],
   audioFeatures: AggregatedAudioFeatures | null
 ): Promise<Signature> {
-  const trackList = tracks
-    .map((t) => `"${t.name}" by ${t.artists.join(", ")}`)
-    .join("\n");
+  const trackList = tracks.map((t) => `"${t.name}" by ${t.artists.join(", ")}`).join("\n");
 
-  const allGenres = tracks.flatMap((t) => t.genres);
   const genreCounts: Record<string, number> = {};
-  for (const g of allGenres) {
-    genreCounts[g] = (genreCounts[g] ?? 0) + 1;
-  }
+  for (const g of tracks.flatMap((t) => t.genres)) genreCounts[g] = (genreCounts[g] ?? 0) + 1;
   const dominantGenres = Object.entries(genreCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
@@ -64,19 +59,18 @@ Respond ONLY with valid JSON in exactly this format, no other text:
 }`;
 
   const message = await client.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 256,
     messages: [{ role: "user", content: prompt }],
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "";
-
-  // Parse JSON response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Claude returned invalid JSON for signature");
-  }
+  if (!jsonMatch) throw new Error("Claude returned no JSON for signature");
 
-  const parsed = JSON.parse(jsonMatch[0]) as Signature;
-  return parsed;
+  try {
+    return JSON.parse(jsonMatch[0]) as Signature;
+  } catch {
+    throw new Error("Claude returned unparseable JSON for signature");
+  }
 }

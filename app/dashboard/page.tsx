@@ -116,20 +116,18 @@ export default async function DashboardPage() {
 
   // Persist to store (awaited so the write completes before the response is sent)
   if (userId) {
-    await Promise.all([
-      upsertUser(
-        {
-          userId,
-          userName: session.userName ?? "Unknown",
-          userImage: session.userImage ?? null,
-          updatedAt: new Date().toISOString(),
-          signature: todaySignature,
-          lastTrack,
-          timezone: tz,
-        },
-        fullHistory
-      ).catch(() =>{}),
-    ]);
+    await upsertUser(
+      {
+        userId,
+        userName: session.userName ?? "Unknown",
+        userImage: session.userImage ?? null,
+        updatedAt: new Date().toISOString(),
+        signature: todaySignature,
+        lastTrack,
+        timezone: tz,
+      },
+      fullHistory
+    ).catch(() => {});
   }
 
   // History passed to SignatureCard excludes today's key (component adds it back)

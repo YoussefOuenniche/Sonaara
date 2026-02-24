@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
-import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
-import { getLikedTracks, getArtistGenres } from "@/lib/spotify";
+import { getUser, setLikedTracks } from "@/lib/store";
+import { getArtistGenres } from "@/lib/spotify";
 import { getUmbrellaKeywords } from "@/lib/genres";
-import type { DiscoverTrack } from "@/types";
+import { resolveUserLibrary, loadFriendsWithNames, buildFriendPool, interleavePool } from "@/lib/discover";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -13,190 +13,51 @@ export async function GET(request: NextRequest) {
   if (!accessToken) return NextResponse.json({ tracks: [] });
 
   const genre = request.nextUrl.searchParams.get("genre") ?? "";
+  const userId = session.userId;
 
-  const currentUser = await getUser(session.userId);
+  const currentUser = await getUser(userId);
   const mySkipped = new Set(currentUser?.skippedTrackIds ?? []);
-
-  // Resolve current user's liked tracks — fetch from Spotify if cache is cold
-  let myLikedTracks = currentUser?.likedTracks ?? [];
-  if (myLikedTracks.length === 0) {
-    myLikedTracks = await getLikedTracks(accessToken).catch(() => []);
-    if (myLikedTracks.length > 0 && currentUser) {
-      await setLikedTracks(session.userId, myLikedTracks).catch(() => {});
-    }
-  } else if (myLikedTracks[0].previewUrl === undefined) {
-    // Cache predates previewUrl field — refresh in background so new likes are excluded next time
-    getLikedTracks(accessToken)
-      .then((fresh) => { if (fresh.length > 0) setLikedTracks(session.userId!, fresh).catch(() => {}); })
-      .catch(() => {});
-  }
-
+  const myLikedTracks = await resolveUserLibrary(userId, currentUser, accessToken);
   const myLikedIds = new Set(myLikedTracks.map((t) => t.id));
 
-  // Name map for resolving display names
-  const nameMap = new Map<string, string>();
-  nameMap.set(session.userId, currentUser?.userName ?? "you");
+  const { friends, nameMap } = await loadFriendsWithNames(userId, currentUser?.userName ?? "you");
+  let pool = Array.from(buildFriendPool(friends, myLikedIds, mySkipped, nameMap).values());
 
-  const friendIds = await getFriendIds(session.userId);
-  const friends = friendIds.length ? await getUsers(friendIds) : [];
-  for (const f of friends) nameMap.set(f.userId, f.userName);
-
-  // Build pool from friends' liked tracks
-  const poolMap = new Map<string, DiscoverTrack>();
-
-  for (const friend of friends) {
-    for (const track of friend.likedTracks ?? []) {
-      if (myLikedIds.has(track.id)) continue;
-      if (mySkipped.has(track.id)) continue;
-
-      if (poolMap.has(track.id)) {
-        const existing = poolMap.get(track.id)!;
-        existing.likedByUserIds.push(friend.userId);
-        existing.likedByNames.push(nameMap.get(friend.userId) ?? "a friend");
-      } else {
-        poolMap.set(track.id, {
-          ...track,
-          likedByUserIds: [friend.userId],
-          likedByNames: [nameMap.get(friend.userId) ?? "a friend"],
-        });
+  // Re-enrich genres for stale pool tracks (cache predates genre support)
+  const staleTracks = pool.filter((t) => t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0);
+  if (staleTracks.length > 0) {
+    const artistIds = [...new Set(staleTracks.flatMap((t) => t.artistIds ?? []))];
+    const genreMap = await getArtistGenres(artistIds, accessToken).catch(() => ({} as Record<string, string[]>));
+    for (const track of staleTracks) {
+      track.genres = [...new Set((track.artistIds ?? []).flatMap((id) => genreMap[id] ?? []))];
+    }
+    // Back-fill friends' caches in the background
+    for (const friend of friends) {
+      if ((friend.likedTracks ?? []).some((t) => t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0)) {
+        setLikedTracks(friend.userId, (friend.likedTracks ?? []).map((t) =>
+          t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0
+            ? { ...t, genres: [...new Set((t.artistIds ?? []).flatMap((id) => genreMap[id] ?? []))] }
+            : t
+        )).catch(() => {});
       }
     }
   }
 
-  let pool = Array.from(poolMap.values());
-
-  // Re-enrich genres for pool tracks whose cached data predates genre support.
-  // Tracks with artistIds but empty genres are stale — fetch genres once and
-  // update both the in-memory pool (so badges show this request) and friends'
-  // caches in the background (so future requests don't need to re-fetch).
-  {
-    const staleTracks = pool.filter(
-      (t) => t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0
-    );
-    if (staleTracks.length > 0) {
-      const allArtistIds = [
-        ...new Set(staleTracks.flatMap((t) => t.artistIds ?? [])),
-      ];
-      const genreMap = await getArtistGenres(allArtistIds, accessToken).catch(
-        () => ({}) as Record<string, string[]>
-      );
-      // Update pool tracks in-memory
-      for (const track of staleTracks) {
-        track.genres = [
-          ...new Set((track.artistIds ?? []).flatMap((id) => genreMap[id] ?? [])),
-        ];
-      }
-      // Update each friend's full likedTracks cache in the background
-      for (const friend of friends) {
-        const friendTracks = friend.likedTracks ?? [];
-        if (
-          friendTracks.some(
-            (t) => t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0
-          )
-        ) {
-          const enriched = friendTracks.map((t) => {
-            if (t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0) {
-              return {
-                ...t,
-                genres: [
-                  ...new Set(
-                    (t.artistIds ?? []).flatMap((id) => genreMap[id] ?? [])
-                  ),
-                ],
-              };
-            }
-            return t;
-          });
-          setLikedTracks(friend.userId, enriched).catch(() => {});
-        }
-      }
-    }
-  }
-
-  // Fallback: seed with the current user's own liked tracks
+  // Fallback: seed with own liked tracks if pool is empty
   if (pool.length === 0 && myLikedTracks.length > 0) {
     const myName = currentUser?.userName ?? "you";
     pool = myLikedTracks
       .filter((t) => !mySkipped.has(t.id))
-      .map((track) => ({
-        ...track,
-        likedByUserIds: [session.userId!],
-        likedByNames: [myName],
-      }));
+      .map((track) => ({ ...track, likedByUserIds: [userId], likedByNames: [myName] }));
   }
 
-  // Filter by umbrella genre — expand to all matching micro-genre keywords
+  // Filter by umbrella genre
   if (genre && genre !== "anything") {
     const keywords = getUmbrellaKeywords(genre.toLowerCase());
     pool = pool.filter((t) =>
-      t.genres.some((tg) => {
-        const tgl = tg.toLowerCase();
-        return keywords.some((kw) => tgl.includes(kw));
-      })
+      t.genres.some((tg) => keywords.some((kw) => tg.toLowerCase().includes(kw)))
     );
   }
 
-  // Split pool: community tracks (liked by 2+ friends) vs single-friend tracks
-  const communityPool = pool.filter((t) => t.likedByUserIds.length >= 2);
-  const singlePool = pool.filter((t) => t.likedByUserIds.length < 2);
-
-  // Round-robin interleave singles by primary friend for even distribution
-  const buckets = new Map<string, DiscoverTrack[]>();
-  for (const track of singlePool) {
-    const key = track.likedByUserIds[0] ?? "fallback";
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key)!.push(track);
-  }
-  // Shuffle each friend's bucket independently
-  for (const bucket of buckets.values()) {
-    for (let k = bucket.length - 1; k > 0; k--) {
-      const r = Math.floor(Math.random() * (k + 1));
-      [bucket[k], bucket[r]] = [bucket[r], bucket[k]];
-    }
-  }
-  // Randomise which friend goes first
-  const queues = Array.from(buckets.values());
-  for (let k = queues.length - 1; k > 0; k--) {
-    const r = Math.floor(Math.random() * (k + 1));
-    [queues[k], queues[r]] = [queues[r], queues[k]];
-  }
-  // Interleave singles: A1, B1, C1, A2, B2, C2, …
-  const interleavedSingles: DiscoverTrack[] = [];
-  const ptrs = new Array(queues.length).fill(0);
-  let hasMore = true;
-  while (hasMore) {
-    hasMore = false;
-    for (let i = 0; i < queues.length; i++) {
-      if (ptrs[i] < queues[i].length) {
-        interleavedSingles.push(queues[i][ptrs[i]++]);
-        hasMore = true;
-      }
-    }
-  }
-
-  // Shuffle community tracks
-  for (let k = communityPool.length - 1; k > 0; k--) {
-    const r = Math.floor(Math.random() * (k + 1));
-    [communityPool[k], communityPool[r]] = [communityPool[r], communityPool[k]];
-  }
-
-  // If no community tracks (only 1 friend or none liked by multiple), skip injection
-  if (communityPool.length === 0) {
-    pool = interleavedSingles;
-  } else {
-    // Inject 1 community track every 4th position: 3 singles → 1 community → repeat
-    pool = [];
-    let si = 0;
-    let ci = 0;
-    while (si < interleavedSingles.length || ci < communityPool.length) {
-      for (let j = 0; j < 3 && si < interleavedSingles.length; j++, si++) {
-        pool.push(interleavedSingles[si]);
-      }
-      if (ci < communityPool.length) {
-        pool.push(communityPool[ci++]);
-      }
-    }
-  }
-
-  return NextResponse.json({ tracks: pool, friendCount: friends.length });
+  return NextResponse.json({ tracks: interleavePool(pool), friendCount: friends.length });
 }
