@@ -29,16 +29,24 @@ declare global {
 export function useSpotifyEmbed() {
   const controllerRef = useRef<EmbedController | null>(null);
   const pendingUriRef = useRef<string | null>(null);
-  // Interval that retries play() while the new track is buffering.
-  // Cleared as soon as isPaused:false is received or pause() is called.
-  const retryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref mirrors isPlaying state so togglePlay always reads the latest value,
+  // even if React hasn't re-rendered yet (critical on slower mobile CPUs).
+  const isPlayingRef = useRef(false);
+  // Single delayed retry — fires 800 ms after loadUri so it lands after both
+  // the "stopping old track" and "buffering new track" isPaused:true events.
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  function setPlayingState(v: boolean) {
+    isPlayingRef.current = v;
+    setIsPlaying(v);
+  }
+
   function clearRetry() {
-    if (retryIntervalRef.current !== null) {
-      clearInterval(retryIntervalRef.current);
-      retryIntervalRef.current = null;
+    if (retryTimeoutRef.current !== null) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
     }
   }
 
@@ -64,13 +72,12 @@ export function useSpotifyEmbed() {
           ctrl.addListener("playback_update", (data) => {
             const d = (data as { data?: { isPaused?: boolean } })?.data;
             if (d === undefined) return;
-            setIsPlaying(!d.isPaused);
-
-            // Once the track is actually playing, stop retrying.
+            setPlayingState(!d.isPaused);
+            // Track is playing — cancel any pending retry.
             if (!d.isPaused) clearRetry();
           });
 
-          // Play any URI that was requested before the controller was ready
+          // Play any URI that was requested before the controller was ready.
           if (pendingUriRef.current) {
             const uri = pendingUriRef.current;
             pendingUriRef.current = null;
@@ -99,25 +106,23 @@ export function useSpotifyEmbed() {
       controllerRef.current = null;
       if (container.parentNode) container.parentNode.removeChild(container);
       setIsReady(false);
-      setIsPlaying(false);
+      setPlayingState(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load a URI and keep retrying play() every 300 ms until the track is
-  // actually playing (isPaused:false) — handles both the "stopping old track"
-  // and "buffering new track" isPaused:true events that Spotify fires.
-  // Gives up after 10 attempts (~3 s) to avoid running forever.
+  // Load a new URI and ensure it plays. Calls play() immediately then schedules
+  // a single fallback play() 800 ms later — by that point Spotify has finished
+  // both the "stop old track" and "buffer new track" transitions, so the
+  // fallback call will either start playback or be a no-op if already playing.
   function startPlayback(ctrl: EmbedController, uri: string) {
     clearRetry();
     ctrl.loadUri(uri);
     ctrl.play();
-    let attempts = 0;
-    retryIntervalRef.current = setInterval(() => {
-      attempts++;
+    retryTimeoutRef.current = setTimeout(() => {
+      retryTimeoutRef.current = null;
       ctrl.play();
-      if (attempts >= 10) clearRetry();
-    }, 300);
+    }, 800);
   }
 
   function loadAndPlay(uri: string) {
@@ -137,7 +142,9 @@ export function useSpotifyEmbed() {
   function togglePlay() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
-    if (isPlaying) {
+    // Read from ref, not the React state closure, to get the latest value
+    // even if the component hasn't re-rendered yet (avoids mobile stale-state bug).
+    if (isPlayingRef.current) {
       clearRetry();
       ctrl.pause();
     } else {
