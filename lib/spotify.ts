@@ -197,6 +197,26 @@ export function aggregateAudioFeatures(
   };
 }
 
+// Batch-fetch preview URLs for a list of track IDs (50 per request)
+export async function getTrackPreviews(
+  trackIds: string[],
+  accessToken: string
+): Promise<Map<string, string | null>> {
+  const previewMap = new Map<string, string | null>();
+  for (let i = 0; i < trackIds.length; i += 50) {
+    const chunk = trackIds.slice(i, i + 50);
+    const data = await spotifyFetch(`/tracks?ids=${chunk.join(",")}`, accessToken).catch(() => null) as {
+      tracks: Array<{ id: string; preview_url: string | null } | null>;
+    } | null;
+    if (data?.tracks) {
+      for (const t of data.tracks) {
+        if (t?.id) previewMap.set(t.id, t.preview_url ?? null);
+      }
+    }
+  }
+  return previewMap;
+}
+
 // Fetch all of the user's liked songs with genre tags
 export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack[]> {
   type RawSavedItem = {

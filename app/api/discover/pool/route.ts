@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
 import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
-import { getLikedTracks } from "@/lib/spotify";
+import { getLikedTracks, getTrackPreviews } from "@/lib/spotify";
 import { getUmbrellaKeywords } from "@/lib/genres";
 import type { DiscoverTrack } from "@/types";
 
@@ -22,9 +22,13 @@ export async function GET(request: NextRequest) {
   if (myLikedTracks.length === 0) {
     myLikedTracks = await getLikedTracks(accessToken).catch(() => []);
     if (myLikedTracks.length > 0 && currentUser) {
-      // Warm the cache so future calls are fast
       await setLikedTracks(session.userId, myLikedTracks).catch(() => {});
     }
+  } else if (myLikedTracks[0].previewUrl === undefined) {
+    // Cache predates previewUrl field — refresh in background so new likes are excluded next time
+    getLikedTracks(accessToken)
+      .then((fresh) => { if (fresh.length > 0) setLikedTracks(session.userId!, fresh).catch(() => {}); })
+      .catch(() => {});
   }
 
   const myLikedIds = new Set(myLikedTracks.map((t) => t.id));
@@ -71,6 +75,19 @@ export async function GET(request: NextRequest) {
         likedByUserIds: [session.userId!],
         likedByNames: [myName],
       }));
+  }
+
+  // Patch pool tracks missing previewUrl — old cache entries lack this field
+  const missingPreviewIds = pool.filter((t) => t.previewUrl === undefined).map((t) => t.id);
+  if (missingPreviewIds.length > 0) {
+    const previews = await getTrackPreviews(missingPreviewIds, accessToken).catch(() => new Map<string, string | null>());
+    if (previews.size > 0) {
+      pool = pool.map((t) =>
+        t.previewUrl === undefined && previews.has(t.id)
+          ? { ...t, previewUrl: previews.get(t.id) ?? null }
+          : t
+      );
+    }
   }
 
   // Filter by umbrella genre — expand to all matching micro-genre keywords

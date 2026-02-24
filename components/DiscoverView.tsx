@@ -242,7 +242,7 @@ export function DiscoverView() {
 
   const genreLabel = genre === "anything" ? "Anything" : (GENRE_UMBRELLAS.find((g) => g.value === genre)?.label ?? genre);
 
-  // Umbrella genre label for the card badge
+  // Umbrella genre label for the card badge — falls back to the raw micro-genre
   const trackGenreLabel = (() => {
     if (!current?.genres?.length) return null;
     for (const g of current.genres) {
@@ -251,7 +251,9 @@ export function DiscoverView() {
         return GENRE_UMBRELLAS.find((u) => u.value === umbrellas[0])?.label ?? null;
       }
     }
-    return null;
+    // No umbrella match — show the first raw genre, capitalised
+    const raw = current.genres[0];
+    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : null;
   })();
 
   // Overlay opacity for swipe feedback
