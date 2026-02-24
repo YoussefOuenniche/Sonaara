@@ -43,6 +43,7 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -140,13 +141,58 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
               userId={id}
               data={friendData[id] ?? null}
               loading={loading && !friendData[id]}
-              onRemove={() => removeFriend(id)}
+              onRemove={() => setPendingRemoveId(id)}
             />
           ))}
         </div>
       )}
 
       {/* Add-friend modal — rendered via portal to escape parent stacking context */}
+      {/* Remove-friend confirmation */}
+      {pendingRemoveId && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[60]"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            onClick={() => setPendingRemoveId(null)}
+          />
+          <div
+            className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-3xl p-6"
+            style={{
+              background: "rgba(18,12,32,0.98)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderBottom: "none",
+              paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+            }}
+          >
+            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
+            <p className="text-white font-semibold text-lg mb-1">Remove friend?</p>
+            <p className="text-white/35 text-sm mb-6">
+              {friendData[pendingRemoveId]?.userName
+                ? `Remove ${friendData[pendingRemoveId].userName} from your friends?`
+                : "Remove this friend from your list?"}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingRemoveId(null)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors"
+                style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { removeFriend(pendingRemoveId); setPendingRemoveId(null); }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors"
+                style={{ background: "rgba(239,68,68,0.2)", color: "rgba(248,113,113,1)" }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
       {showModal && createPortal(
         <>
           {/* Backdrop */}
