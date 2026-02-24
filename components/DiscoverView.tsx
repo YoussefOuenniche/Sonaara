@@ -204,8 +204,6 @@ export function DiscoverView() {
 
   function onPointerDown(e: React.PointerEvent) {
     if ((e.target as HTMLElement).closest("button")) return;
-    // Re-establish iOS audio session at the very start of a touch gesture.
-    embedPrime();
     e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingRef.current = true;
     dragStartX.current = e.clientX;
