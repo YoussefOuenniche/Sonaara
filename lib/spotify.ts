@@ -204,6 +204,7 @@ export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack
       id: string;
       name: string;
       uri: string;
+      preview_url: string | null;
       artists: { id: string; name: string }[];
       album: { name: string; images: { url: string }[] };
     };
@@ -232,6 +233,7 @@ export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack
           albumImageUrl: t.album?.images?.[0]?.url ?? "",
           genres: [],
           uri: t.uri,
+          previewUrl: t.preview_url ?? null,
           likedByUserIds: [],
           likedByNames: [],
         },

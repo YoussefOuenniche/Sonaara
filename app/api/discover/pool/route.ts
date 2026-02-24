@@ -84,10 +84,39 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Full random shuffle — gives an even mix of songs from all friends
-  for (let k = pool.length - 1; k > 0; k--) {
+  // Round-robin interleave by primary friend for even distribution
+  // Group tracks by the first friend who liked them
+  const buckets = new Map<string, DiscoverTrack[]>();
+  for (const track of pool) {
+    const key = track.likedByUserIds[0] ?? "fallback";
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(track);
+  }
+  // Shuffle each friend's bucket independently
+  for (const bucket of buckets.values()) {
+    for (let k = bucket.length - 1; k > 0; k--) {
+      const r = Math.floor(Math.random() * (k + 1));
+      [bucket[k], bucket[r]] = [bucket[r], bucket[k]];
+    }
+  }
+  // Randomise which friend goes first (different order each load)
+  const queues = Array.from(buckets.values());
+  for (let k = queues.length - 1; k > 0; k--) {
     const r = Math.floor(Math.random() * (k + 1));
-    [pool[k], pool[r]] = [pool[r], pool[k]];
+    [queues[k], queues[r]] = [queues[r], queues[k]];
+  }
+  // Interleave: A1, B1, C1, A2, B2, C2, …
+  pool = [];
+  const ptrs = new Array(queues.length).fill(0);
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = false;
+    for (let i = 0; i < queues.length; i++) {
+      if (ptrs[i] < queues[i].length) {
+        pool.push(queues[i][ptrs[i]++]);
+        hasMore = true;
+      }
+    }
   }
 
   return NextResponse.json({ tracks: pool, friendCount: friends.length });

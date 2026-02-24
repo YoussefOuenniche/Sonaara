@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { DiscoverTrack } from "@/types";
-import { GENRE_UMBRELLAS } from "@/lib/genres";
+import { GENRE_UMBRELLAS, mapToUmbrellas } from "@/lib/genres";
 
 
 type Phase = "prompt" | "cards";
@@ -14,7 +13,7 @@ function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
 
-export function DiscoverView({ accessToken }: { accessToken: string }) {
+export function DiscoverView() {
   const [phase, setPhase] = useState<Phase>("prompt");
   const [genre, setGenre] = useState("anything");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -27,6 +26,8 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -35,8 +36,8 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   const dragStartX = useRef(0);
   const SWIPE_THRESHOLD = 75;
 
-  // Card fade-in state
-  const [cardOpacity, setCardOpacity] = useState(1);
+  // Directional entry animation for incoming card
+  const [enterFromDir, setEnterFromDir] = useState<"left" | "right" | null>(null);
 
   // Button animation states
   const [heartAnim, setHeartAnim] = useState(false);
@@ -46,7 +47,6 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   // Undo last like/skip
   const [lastAction, setLastAction] = useState<{ dir: "left" | "right"; track: DiscoverTrack; index: number } | null>(null);
 
-  const { state: playerState, playTrack, togglePlay, activateElement } = useSpotifyPlayer(accessToken);
 
   const fetchPool = useCallback(async (g: string) => {
     setLoading(true);
@@ -68,12 +68,46 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
 
   const current = pool[index] ?? null;
 
+  // Audio playback — 30-second preview via HTML Audio
   useEffect(() => {
-    if (current && playerState.isReady) {
-      playTrack(current.uri);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current = null;
     }
+    setIsPlaying(false);
+
+    if (!current) return;
+
+    if (!current.previewUrl) {
+      // No preview available — skip silently without blocking the user
+      fetch("/api/discover/skip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: current.id, track: current }),
+      }).catch(() => {});
+      const next = index + 1;
+      if (next >= pool.length) { setDone(true); return; }
+      setIndex(next);
+      return;
+    }
+
+    const audio = new Audio(current.previewUrl);
+    audioRef.current = audio;
+    audio.volume = 0.9;
+    audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    audio.onended = () => setIsPlaying(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, playerState.isReady]);
+  }, [current?.id]);
+
+  // Clear enter-direction after the browser paints the starting position so the CSS transition runs
+  useEffect(() => {
+    if (enterFromDir === null) return;
+    let id = requestAnimationFrame(() => {
+      id = requestAnimationFrame(() => setEnterFromDir(null));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [enterFromDir]);
 
   // Fetch available genres once when on prompt screen
   useEffect(() => {
@@ -85,12 +119,17 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   }, [phase, availableGenres]);
 
   function handleSubmit() {
-    activateElement();
     setPhase("cards");
     fetchPool(genre);
   }
 
   function handleChangeGenre() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current = null;
+    }
+    setIsPlaying(false);
     setPhase("prompt");
     setPool([]);
     setDone(false);
@@ -130,11 +169,15 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
     const next = index + 1;
     if (next >= pool.length) {
       setDone(true);
-      if (playerState.isPlaying) togglePlay();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+        audioRef.current = null;
+      }
+      setIsPlaying(false);
       return;
     }
-    setCardOpacity(0);
-    setTimeout(() => setCardOpacity(1), 40);
+    setEnterFromDir(dir === "right" ? "left" : "right");
     setIndex(next);
   }
 
@@ -158,11 +201,21 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
       }).catch(() => {});
     }
 
-    // Restore card
+    // Restore card — enters from the same side it left
     setDone(false);
-    setCardOpacity(0);
+    setEnterFromDir(dir);
     setIndex(prevIndex);
-    setTimeout(() => setCardOpacity(1), 40);
+  }
+
+  function togglePlay() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -200,21 +253,36 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
 
   const genreLabel = genre === "anything" ? "Anything" : (GENRE_UMBRELLAS.find((g) => g.value === genre)?.label ?? genre);
 
+  // Umbrella genre label for the card badge
+  const trackGenreLabel = (() => {
+    if (!current?.genres?.length) return null;
+    for (const g of current.genres) {
+      const umbrellas = mapToUmbrellas(g);
+      if (umbrellas.length > 0) {
+        return GENRE_UMBRELLAS.find((u) => u.value === umbrellas[0])?.label ?? null;
+      }
+    }
+    return null;
+  })();
+
   // Overlay opacity for swipe feedback
   const overlayOpacity = Math.min(Math.abs(dragOffset) / SWIPE_THRESHOLD, 1) * 0.45;
   const overlayColor = dragOffset > 0 ? `rgba(236,72,153,${overlayOpacity})` : `rgba(239,68,68,${overlayOpacity})`;
 
-  // Card transform
+  // Card transform — arc exit to corner, opposite-corner entry
   const cardStyle: React.CSSProperties = {
     transform: exitDir === "right"
-      ? "translateX(130%) rotate(20deg)"
+      ? "translateX(110%) translateY(70%) rotate(55deg)"
       : exitDir === "left"
-      ? "translateX(-130%) rotate(-20deg)"
+      ? "translateX(-110%) translateY(70%) rotate(-55deg)"
+      : enterFromDir === "left"
+      ? "translateX(-110%) translateY(70%) rotate(-45deg)"
+      : enterFromDir === "right"
+      ? "translateX(110%) translateY(70%) rotate(45deg)"
       : `translateX(${dragOffset}px) rotate(${dragOffset * 0.06}deg)`,
-    transition: isDraggingRef.current
+    transition: isDraggingRef.current || enterFromDir !== null
       ? "none"
-      : "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s ease",
-    opacity: cardOpacity,
+      : "transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)",
     cursor: isDraggingRef.current ? "grabbing" : "grab",
     userSelect: "none",
     touchAction: "none",
@@ -485,11 +553,26 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
             )}
 
             {/* Album art */}
-            <div className="relative w-56 h-56 rounded-2xl overflow-hidden shadow-2xl mb-6">
-              {current.albumImageUrl ? (
-                <Image src={current.albumImageUrl} alt={current.albumName} fill className="object-cover" sizes="224px" />
-              ) : (
-                <div className="w-full h-full bg-white/10 flex items-center justify-center text-4xl">🎵</div>
+            <div className="relative w-56 h-56 mb-6">
+              <div className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl">
+                {current.albumImageUrl ? (
+                  <Image src={current.albumImageUrl} alt={current.albumName} fill className="object-cover" sizes="224px" />
+                ) : (
+                  <div className="w-full h-full bg-white/10 flex items-center justify-center text-4xl">🎵</div>
+                )}
+              </div>
+              {trackGenreLabel && (
+                <div
+                  className="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                  style={{
+                    background: "rgba(0,0,0,0.55)",
+                    backdropFilter: "blur(8px)",
+                    color: "rgba(255,255,255,0.9)",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {trackGenreLabel}
+                </div>
               )}
             </div>
 
@@ -499,14 +582,6 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
               <p className="text-white/60 text-base mt-1">{current.artists.join(", ")}</p>
               <p className="text-white/30 text-sm mt-0.5">{current.albumName}</p>
             </div>
-
-            {/* Playback status */}
-            {playerState.error && (
-              <p className="text-red-400/70 text-xs mb-3 text-center max-w-xs">{playerState.error}</p>
-            )}
-            {!playerState.isReady && !playerState.error && (
-              <p className="text-white/25 text-xs mb-3">Connecting player…</p>
-            )}
 
             {/* Controls */}
             <div className="flex items-center gap-7 mt-1">
@@ -525,14 +600,14 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
               {/* Play/pause — white */}
               <button
                 onClick={() => { triggerPlayAnim(); togglePlay(); }}
-                disabled={!playerState.isReady}
+                disabled={!current?.previewUrl}
                 className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-100 disabled:opacity-30"
                 style={{
                   background: playAnim ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)",
                   transform: playAnim ? "scale(0.92)" : "scale(1)",
                 }}
               >
-                {playerState.isPlaying ? (
+                {isPlaying ? (
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="white">
                     <rect x="2" y="2" width="5" height="14" rx="1.5" />
                     <rect x="11" y="2" width="5" height="14" rx="1.5" />

@@ -39,6 +39,7 @@ export interface DiscoverTrack {
   albumImageUrl: string;
   genres: string[];
   uri: string; // spotify:track:...
+  previewUrl: string | null;
   likedByUserIds: string[];
   likedByNames: string[]; // display names matching likedByUserIds
 }
