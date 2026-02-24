@@ -66,6 +66,7 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
         setDone(true);
       } else {
         setNoTracksFromServer(false);
+        setWaitingForFirstPlay(true);
       }
     } catch {
       setPool([]);
@@ -83,14 +84,12 @@ export function DiscoverView({ accessToken }: { accessToken: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, playerState.isReady]);
 
-  // Show spinner until the first track actually starts playing (max 2s fallback)
-  const firstTrackId = pool[0]?.id ?? null;
+  // Clear waitingForFirstPlay once the first track actually starts playing (max 2s fallback)
   useEffect(() => {
-    if (!firstTrackId || firstPlayDoneRef.current) return;
-    setWaitingForFirstPlay(true);
+    if (!waitingForFirstPlay) return;
     const t = setTimeout(() => setWaitingForFirstPlay(false), 2000);
     return () => clearTimeout(t);
-  }, [firstTrackId]);
+  }, [waitingForFirstPlay]);
 
   useEffect(() => {
     if (playerState.isPlaying && !firstPlayDoneRef.current) {
