@@ -29,6 +29,9 @@ declare global {
 export function useSpotifyEmbed() {
   const controllerRef = useRef<EmbedController | null>(null);
   const pendingUriRef = useRef<string | null>(null);
+  // Whether we *want* the player playing. Used to retry play() after loadUri
+  // causes a transient isPaused:true while the new track buffers.
+  const wantsPlayRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -56,11 +59,19 @@ export function useSpotifyEmbed() {
 
           ctrl.addListener("playback_update", (data) => {
             const d = (data as { data?: { isPaused?: boolean } })?.data;
-            if (d !== undefined) setIsPlaying(!d.isPaused);
+            if (d === undefined) return;
+            const paused = !!d.isPaused;
+            setIsPlaying(!paused);
+            // If the player went paused while we still want playback (e.g.
+            // Spotify briefly pauses when loadUri switches tracks), retry play().
+            if (paused && wantsPlayRef.current) {
+              ctrl.play();
+            }
           });
 
           // Play any URI that was requested before the controller was ready
           if (pendingUriRef.current) {
+            wantsPlayRef.current = true;
             ctrl.loadUri(pendingUriRef.current);
             ctrl.play();
             pendingUriRef.current = null;
@@ -87,6 +98,7 @@ export function useSpotifyEmbed() {
     return () => {
       controllerRef.current?.destroy();
       controllerRef.current = null;
+      wantsPlayRef.current = false;
       if (container.parentNode) container.parentNode.removeChild(container);
       setIsReady(false);
       setIsPlaying(false);
@@ -99,27 +111,35 @@ export function useSpotifyEmbed() {
       pendingUriRef.current = uri;
       return;
     }
+    wantsPlayRef.current = true;
     ctrl.loadUri(uri);
     ctrl.play();
   }
 
   function pause() {
+    wantsPlayRef.current = false;
     controllerRef.current?.pause();
   }
 
   function togglePlay() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
-    if (isPlaying) ctrl.pause();
-    else ctrl.play();
+    if (isPlaying) {
+      wantsPlayRef.current = false;
+      ctrl.pause();
+    } else {
+      wantsPlayRef.current = true;
+      ctrl.play();
+    }
   }
 
   // Call this during a user gesture (e.g. button click) to unlock browser
   // autoplay. The placeholder track plays briefly until the first real
-  // loadAndPlay switches it — do NOT pause here or we race with loadAndPlay.
+  // loadAndPlay switches it.
   function prime() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
+    wantsPlayRef.current = true;
     ctrl.play();
   }
 

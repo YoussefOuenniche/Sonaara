@@ -25,6 +25,9 @@ export function DiscoverView() {
   const [friendCount, setFriendCount] = useState(0);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  // Keeps the spinner visible until the first track actually starts playing
+  const [waitingForFirstPlay, setWaitingForFirstPlay] = useState(false);
+  const firstPlayDoneRef = useRef(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
   const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useSpotifyEmbed();
@@ -76,6 +79,22 @@ export function DiscoverView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, embedReady]);
 
+  // Show spinner until the first track actually starts playing (max 2s fallback)
+  const firstTrackId = pool[0]?.id ?? null;
+  useEffect(() => {
+    if (!firstTrackId || firstPlayDoneRef.current) return;
+    setWaitingForFirstPlay(true);
+    const t = setTimeout(() => setWaitingForFirstPlay(false), 2000);
+    return () => clearTimeout(t);
+  }, [firstTrackId]);
+
+  useEffect(() => {
+    if (embedPlaying && !firstPlayDoneRef.current) {
+      firstPlayDoneRef.current = true;
+      setWaitingForFirstPlay(false);
+    }
+  }, [embedPlaying]);
+
   // Clear enter-direction after the browser paints the starting position so the CSS transition runs
   useEffect(() => {
     if (enterFromDir === null) return;
@@ -107,6 +126,8 @@ export function DiscoverView() {
     setDone(false);
     setIndex(0);
     setAvailableGenres(null);
+    firstPlayDoneRef.current = false;
+    setWaitingForFirstPlay(false);
   }
 
   async function triggerExit(dir: "left" | "right") {
@@ -452,21 +473,22 @@ export function DiscoverView() {
       {/* Card area — pb-20 offsets the fixed BottomNav so the card is visually centred */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden pb-20">
         {/* Ambient background */}
-        {current && (
+        {current && !waitingForFirstPlay && (
           <div className="absolute inset-0 z-0">
             <div className="ambient-bg absolute inset-0 opacity-60" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/50" />
           </div>
         )}
 
-        {loading && (
+        {/* Spinner: show while fetching pool OR while audio is buffering for first track */}
+        {(loading || waitingForFirstPlay) && (
           <div className="relative z-10 flex flex-col items-center gap-4">
             <VinylLogo size={56} />
             <span className="font-bold text-base tracking-tight" style={{ color: "var(--foreground)", opacity: 0.45 }}>sonaara</span>
           </div>
         )}
 
-        {!loading && done && (
+        {!loading && !waitingForFirstPlay && done && (
           <div className="relative z-10 text-center px-6">
             <p className="text-4xl mb-4">🎵</p>
             <p className="text-white text-lg font-semibold">You&apos;re all caught up</p>
@@ -491,7 +513,7 @@ export function DiscoverView() {
           </div>
         )}
 
-        {!loading && !done && current && (
+        {!loading && !waitingForFirstPlay && !done && current && (
           <div
             className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center"
             style={cardStyle}
@@ -622,10 +644,6 @@ export function DiscoverView() {
               </button>
             )}
 
-            {/* Player loading indicator */}
-            {!embedReady && (
-              <p className="mt-4 text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>connecting player…</p>
-            )}
           </div>
         )}
       </div>
