@@ -35,6 +35,7 @@ export interface DiscoverTrack {
   id: string;
   name: string;
   artists: string[];
+  artistIds?: string[]; // Spotify artist IDs — used to re-enrich genres when cache is stale
   albumName: string;
   albumImageUrl: string;
   genres: string[];

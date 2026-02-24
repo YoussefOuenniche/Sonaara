@@ -115,13 +115,12 @@ export function useSpotifyEmbed() {
   }
 
   // Call this during a user gesture (e.g. button click) to unlock browser
-  // autoplay so subsequent loadAndPlay calls work without a gesture.
+  // autoplay. The placeholder track plays briefly until the first real
+  // loadAndPlay switches it — do NOT pause here or we race with loadAndPlay.
   function prime() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     ctrl.play();
-    // Pause immediately — we only need the gesture to unlock the audio context
-    setTimeout(() => ctrl.pause(), 80);
   }
 
   return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };

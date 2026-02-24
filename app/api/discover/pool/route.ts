@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, getAccessToken } from "@/lib/session";
 import { getUser, getUsers, getFriendIds, setLikedTracks } from "@/lib/store";
-import { getLikedTracks } from "@/lib/spotify";
+import { getLikedTracks, getArtistGenres } from "@/lib/spotify";
 import { getUmbrellaKeywords } from "@/lib/genres";
 import type { DiscoverTrack } from "@/types";
 
@@ -64,6 +64,54 @@ export async function GET(request: NextRequest) {
   }
 
   let pool = Array.from(poolMap.values());
+
+  // Re-enrich genres for pool tracks whose cached data predates genre support.
+  // Tracks with artistIds but empty genres are stale — fetch genres once and
+  // update both the in-memory pool (so badges show this request) and friends'
+  // caches in the background (so future requests don't need to re-fetch).
+  {
+    const staleTracks = pool.filter(
+      (t) => t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0
+    );
+    if (staleTracks.length > 0) {
+      const allArtistIds = [
+        ...new Set(staleTracks.flatMap((t) => t.artistIds ?? [])),
+      ];
+      const genreMap = await getArtistGenres(allArtistIds, accessToken).catch(
+        () => ({}) as Record<string, string[]>
+      );
+      // Update pool tracks in-memory
+      for (const track of staleTracks) {
+        track.genres = [
+          ...new Set((track.artistIds ?? []).flatMap((id) => genreMap[id] ?? [])),
+        ];
+      }
+      // Update each friend's full likedTracks cache in the background
+      for (const friend of friends) {
+        const friendTracks = friend.likedTracks ?? [];
+        if (
+          friendTracks.some(
+            (t) => t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0
+          )
+        ) {
+          const enriched = friendTracks.map((t) => {
+            if (t.genres.length === 0 && (t.artistIds?.length ?? 0) > 0) {
+              return {
+                ...t,
+                genres: [
+                  ...new Set(
+                    (t.artistIds ?? []).flatMap((id) => genreMap[id] ?? [])
+                  ),
+                ],
+              };
+            }
+            return t;
+          });
+          setLikedTracks(friend.userId, enriched).catch(() => {});
+        }
+      }
+    }
+  }
 
   // Fallback: seed with the current user's own liked tracks
   if (pool.length === 0 && myLikedTracks.length > 0) {

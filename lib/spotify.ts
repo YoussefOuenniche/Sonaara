@@ -102,7 +102,7 @@ export async function getYesterdayTracks(accessToken: string, tz = "UTC"): Promi
 }
 
 // Get genres for a list of artist IDs (batched, max 50 per request)
-async function getArtistGenres(
+export async function getArtistGenres(
   artistIds: string[],
   accessToken: string
 ): Promise<Record<string, string[]>> {
@@ -256,6 +256,7 @@ export async function getLikedTracks(accessToken: string): Promise<DiscoverTrack
           id: t.id,
           name: t.name,
           artists: t.artists.map((a) => a.name),
+          artistIds: t.artists.map((a) => a.id),
           albumName: t.album?.name ?? "",
           albumImageUrl: t.album?.images?.[0]?.url ?? "",
           genres: [],

@@ -449,8 +449,8 @@ export function DiscoverView() {
         </button>
       </header>
 
-      {/* Card area */}
-      <div className="relative flex-1 flex items-center justify-center overflow-hidden">
+      {/* Card area — pb-20 offsets the fixed BottomNav so the card is visually centred */}
+      <div className="relative flex-1 flex items-center justify-center overflow-hidden pb-20">
         {/* Ambient background */}
         {current && (
           <div className="absolute inset-0 z-0">
