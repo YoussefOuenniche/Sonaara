@@ -27,7 +27,7 @@ export function DiscoverView() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
-  const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay } = useSpotifyEmbed();
+  const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useSpotifyEmbed();
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -95,6 +95,7 @@ export function DiscoverView() {
   }, [phase, availableGenres]);
 
   function handleSubmit() {
+    embedPrime();
     setPhase("cards");
     fetchPool(genre);
   }
@@ -215,6 +216,17 @@ export function DiscoverView() {
   // Umbrella genre label for the card badge — falls back to the raw micro-genre
   const trackGenreLabel = (() => {
     if (!current?.genres?.length) return null;
+    // When filtering by a specific genre, prefer showing that umbrella's label
+    if (genre && genre !== "anything") {
+      const selectedUmbrella = GENRE_UMBRELLAS.find((u) => u.value === genre);
+      if (selectedUmbrella) {
+        const matches = current.genres.some((g) => {
+          const gl = g.toLowerCase();
+          return selectedUmbrella.keywords.some((kw) => gl.includes(kw));
+        });
+        if (matches) return selectedUmbrella.label;
+      }
+    }
     for (const g of current.genres) {
       const umbrellas = mapToUmbrellas(g);
       if (umbrellas.length > 0) {

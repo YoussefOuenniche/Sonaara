@@ -88,10 +88,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Round-robin interleave by primary friend for even distribution
-  // Group tracks by the first friend who liked them
+  // Split pool: community tracks (liked by 2+ friends) vs single-friend tracks
+  const communityPool = pool.filter((t) => t.likedByUserIds.length >= 2);
+  const singlePool = pool.filter((t) => t.likedByUserIds.length < 2);
+
+  // Round-robin interleave singles by primary friend for even distribution
   const buckets = new Map<string, DiscoverTrack[]>();
-  for (const track of pool) {
+  for (const track of singlePool) {
     const key = track.likedByUserIds[0] ?? "fallback";
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key)!.push(track);
@@ -103,22 +106,46 @@ export async function GET(request: NextRequest) {
       [bucket[k], bucket[r]] = [bucket[r], bucket[k]];
     }
   }
-  // Randomise which friend goes first (different order each load)
+  // Randomise which friend goes first
   const queues = Array.from(buckets.values());
   for (let k = queues.length - 1; k > 0; k--) {
     const r = Math.floor(Math.random() * (k + 1));
     [queues[k], queues[r]] = [queues[r], queues[k]];
   }
-  // Interleave: A1, B1, C1, A2, B2, C2, …
-  pool = [];
+  // Interleave singles: A1, B1, C1, A2, B2, C2, …
+  const interleavedSingles: DiscoverTrack[] = [];
   const ptrs = new Array(queues.length).fill(0);
   let hasMore = true;
   while (hasMore) {
     hasMore = false;
     for (let i = 0; i < queues.length; i++) {
       if (ptrs[i] < queues[i].length) {
-        pool.push(queues[i][ptrs[i]++]);
+        interleavedSingles.push(queues[i][ptrs[i]++]);
         hasMore = true;
+      }
+    }
+  }
+
+  // Shuffle community tracks
+  for (let k = communityPool.length - 1; k > 0; k--) {
+    const r = Math.floor(Math.random() * (k + 1));
+    [communityPool[k], communityPool[r]] = [communityPool[r], communityPool[k]];
+  }
+
+  // If no community tracks (only 1 friend or none liked by multiple), skip injection
+  if (communityPool.length === 0) {
+    pool = interleavedSingles;
+  } else {
+    // Inject 1 community track every 4th position: 3 singles → 1 community → repeat
+    pool = [];
+    let si = 0;
+    let ci = 0;
+    while (si < interleavedSingles.length || ci < communityPool.length) {
+      for (let j = 0; j < 3 && si < interleavedSingles.length; j++, si++) {
+        pool.push(interleavedSingles[si]);
+      }
+      if (ci < communityPool.length) {
+        pool.push(communityPool[ci++]);
       }
     }
   }

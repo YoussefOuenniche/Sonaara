@@ -279,7 +279,7 @@ function FriendCard({
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-white text-[15px] font-semibold truncate">{data.userName}</span>
             {sig ? (
-              <span className="flex gap-1 bg-white/8 rounded-lg px-2 py-0.5 flex-shrink-0">
+              <span className="flex gap-1 flex-shrink-0" style={{ filter: "drop-shadow(0 0 7px rgba(255,255,255,0.6))" }}>
                 <span className="text-lg leading-none select-none">{sig.genre}</span>
                 <span className="text-lg leading-none select-none">{sig.mood}</span>
                 <span className="text-lg leading-none select-none">{sig.theme}</span>
