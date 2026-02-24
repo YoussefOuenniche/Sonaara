@@ -119,6 +119,9 @@ export function DiscoverView() {
   }, [phase, availableGenres]);
 
   function handleSubmit() {
+    // prime() synchronously in the gesture — plays a silent WAV to establish
+    // iOS audio context activation so the Spotify embed can autoplay the first track.
+    embedPrime();
     setPhase("cards");
     fetchPool(genre);
   }

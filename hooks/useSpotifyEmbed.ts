@@ -26,9 +26,14 @@ declare global {
   }
 }
 
+// Minimal silent WAV (44 bytes) — used to establish iOS audio context activation
+// in the parent frame so allow="autoplay" delegation to the Spotify iframe works.
+const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
 export function useAudioPlayer() {
   const ctrlRef         = useRef<EmbedController | null>(null);
   const containerRef    = useRef<HTMLDivElement | null>(null);
+  const activatorRef    = useRef<HTMLAudioElement | null>(null);
   const initializingRef = useRef(false);
   const pendingUriRef   = useRef<string | null>(null);
   const isPlayingRef    = useRef(false);
@@ -50,6 +55,10 @@ export function useAudioPlayer() {
   }
 
   useEffect(() => {
+    // Silent audio element — played synchronously in gesture handlers to unlock
+    // iOS audio context in the parent frame before the Spotify iframe is ready.
+    activatorRef.current = new Audio(SILENT_WAV);
+
     // Create the hidden container that will host the Spotify embed iframe.
     const container = document.createElement("div");
     container.setAttribute("aria-hidden", "true");
@@ -73,6 +82,7 @@ export function useAudioPlayer() {
       ctrlRef.current?.destroy();
       ctrlRef.current = null;
       initializingRef.current = false;
+      activatorRef.current = null;
       container.parentNode?.removeChild(container);
       containerRef.current = null;
       setIsReady(false);
@@ -173,10 +183,13 @@ export function useAudioPlayer() {
 
   /**
    * Call synchronously inside a user-gesture handler (swipe/button press).
-   * Extends sticky activation so the iframe keeps playing across async
-   * track changes (useEffect, etc.) on older iOS.
+   * 1. Plays a silent WAV on the parent frame — establishes iOS audio activation
+   *    so the Spotify embed's allow="autoplay" delegation fires correctly.
+   * 2. Calls ctrl.play() if the controller is already initialised — extends
+   *    sticky activation for the current track across async changes.
    */
   function prime() {
+    activatorRef.current?.play().catch(() => {});
     ctrlRef.current?.play();
   }
 
