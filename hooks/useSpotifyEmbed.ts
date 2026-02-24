@@ -27,20 +27,28 @@ declare global {
 }
 
 export function useSpotifyEmbed() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const controllerRef = useRef<EmbedController | null>(null);
   const pendingUriRef = useRef<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
+    // Create the container element directly in document.body so it is always
+    // present in the DOM regardless of which React phase (prompt vs cards) is
+    // currently rendered.  If we relied on a ref that is only attached in the
+    // cards phase, onSpotifyIframeApiReady could fire while the ref is null and
+    // the controller would never be created.
+    const container = document.createElement("div");
+    container.setAttribute("aria-hidden", "true");
+    container.style.cssText =
+      "position:fixed;bottom:0;left:-9999px;width:300px;height:80px;";
+    document.body.appendChild(container);
+
     function initController(IFrameAPI: SpotifyIFrameAPI) {
-      const el = containerRef.current;
-      if (!el || controllerRef.current) return;
+      if (controllerRef.current) return;
 
       IFrameAPI.createController(
-        el,
-        // Placeholder URI — gets replaced by the first loadUri() call
+        container,
         { uri: "spotify:track:4iV5W9uYEdYUVa79Axb7Rh", width: "100%", height: 80 },
         (ctrl) => {
           controllerRef.current = ctrl;
@@ -61,7 +69,7 @@ export function useSpotifyEmbed() {
       );
     }
 
-    // If the IFrame API script was already loaded (e.g. hot-reload), init immediately
+    // If the IFrame API was already loaded (e.g. HMR / hot-reload), init immediately
     if (window.SpotifyIframeApi) {
       initController(window.SpotifyIframeApi);
     } else {
@@ -79,12 +87,12 @@ export function useSpotifyEmbed() {
     return () => {
       controllerRef.current?.destroy();
       controllerRef.current = null;
+      if (container.parentNode) container.parentNode.removeChild(container);
       setIsReady(false);
       setIsPlaying(false);
     };
   }, []);
 
-  /** Load and immediately begin playing a track URI. */
   function loadAndPlay(uri: string) {
     const ctrl = controllerRef.current;
     if (!ctrl) {
@@ -106,5 +114,5 @@ export function useSpotifyEmbed() {
     else ctrl.play();
   }
 
-  return { containerRef, isReady, isPlaying, loadAndPlay, pause, togglePlay };
+  return { isReady, isPlaying, loadAndPlay, pause, togglePlay };
 }

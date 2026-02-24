@@ -27,7 +27,7 @@ export function DiscoverView() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
-  const { containerRef: embedContainerRef, isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay } = useSpotifyEmbed();
+  const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay } = useSpotifyEmbed();
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -436,13 +436,6 @@ export function DiscoverView() {
           {genreLabel} ×
         </button>
       </header>
-
-      {/* Hidden Spotify Embed container — positioned off-screen so audio works without showing Spotify UI */}
-      <div
-        ref={embedContainerRef}
-        aria-hidden="true"
-        style={{ position: "fixed", bottom: 0, left: "-9999px", width: "300px", height: "80px" }}
-      />
 
       {/* Card area */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
