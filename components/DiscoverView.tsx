@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { DiscoverTrack } from "@/types";
-import { GENRE_UMBRELLAS, mapToUmbrellas } from "@/lib/genres";
+import { GENRE_UMBRELLAS } from "@/lib/genres";
 import { useSpotifyEmbed } from "@/hooks/useSpotifyEmbed";
 
 
@@ -133,6 +133,9 @@ export function DiscoverView() {
   async function triggerExit(dir: "left" | "right") {
     if (exitingRef.current || !current) return;
     exitingRef.current = true;
+    // Re-establish iOS audio session synchronously during the user gesture so
+    // the next loadUri + play() call (280 ms later) is within the activation window.
+    embedPrime();
 
     // Fire API immediately — non-blocking
     if (dir === "right") {
@@ -201,6 +204,8 @@ export function DiscoverView() {
 
   function onPointerDown(e: React.PointerEvent) {
     if ((e.target as HTMLElement).closest("button")) return;
+    // Re-establish iOS audio session at the very start of a touch gesture.
+    embedPrime();
     e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingRef.current = true;
     dragStartX.current = e.clientX;
@@ -234,29 +239,23 @@ export function DiscoverView() {
 
   const genreLabel = genre === "anything" ? "Anything" : (GENRE_UMBRELLAS.find((g) => g.value === genre)?.label ?? genre);
 
-  // Umbrella genre label for the card badge — falls back to the raw micro-genre
+  // Raw Spotify sub-genre for the card badge.
+  // When a genre filter is active, prefer the matching sub-genre; otherwise use the first one.
   const trackGenreLabel = (() => {
     if (!current?.genres?.length) return null;
-    // When filtering by a specific genre, prefer showing that umbrella's label
+    let raw: string | null = null;
     if (genre && genre !== "anything") {
       const selectedUmbrella = GENRE_UMBRELLAS.find((u) => u.value === genre);
       if (selectedUmbrella) {
-        const matches = current.genres.some((g) => {
+        raw = current.genres.find((g) => {
           const gl = g.toLowerCase();
           return selectedUmbrella.keywords.some((kw) => gl.includes(kw));
-        });
-        if (matches) return selectedUmbrella.label;
+        }) ?? current.genres[0];
       }
     }
-    for (const g of current.genres) {
-      const umbrellas = mapToUmbrellas(g);
-      if (umbrellas.length > 0) {
-        return GENRE_UMBRELLAS.find((u) => u.value === umbrellas[0])?.label ?? null;
-      }
-    }
-    // No umbrella match — show the first raw genre, capitalised
-    const raw = current.genres[0];
-    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : null;
+    raw = raw ?? current.genres[0];
+    // Title-case: capitalise after start-of-string, space, or hyphen
+    return raw.replace(/(^|[\s-])\S/g, (c) => c.toUpperCase());
   })();
 
   // Overlay opacity for swipe feedback

@@ -205,7 +205,7 @@ export function SignatureCard({
       {/* ── Dot indicators — below the emojis ── */}
       {hasHistory && (
         <div className="flex justify-center gap-1 mt-5">
-          {sortedKeys.map((k) => (
+          {[...sortedKeys].reverse().map((k) => (
             <button
               key={k}
               onClick={() => setCurrentKey(k)}
