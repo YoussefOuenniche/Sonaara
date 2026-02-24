@@ -79,18 +79,7 @@ export function DiscoverView() {
 
     if (!current) return;
 
-    if (!current.previewUrl) {
-      // No preview available — skip silently without blocking the user
-      fetch("/api/discover/skip", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackId: current.id, track: current }),
-      }).catch(() => {});
-      const next = index + 1;
-      if (next >= pool.length) { setDone(true); return; }
-      setIndex(next);
-      return;
-    }
+    if (!current.previewUrl) return; // No preview — show card silently, play button disabled
 
     const audio = new Audio(current.previewUrl);
     audioRef.current = audio;
@@ -159,7 +148,7 @@ export function DiscoverView() {
     // Animate card off screen
     setExitDir(dir);
     setDragOffset(0);
-    await sleep(320);
+    await sleep(280);
 
     // Card is gone — save action for potential undo, then advance
     exitingRef.current = false;
@@ -269,20 +258,22 @@ export function DiscoverView() {
   const overlayOpacity = Math.min(Math.abs(dragOffset) / SWIPE_THRESHOLD, 1) * 0.45;
   const overlayColor = dragOffset > 0 ? `rgba(236,72,153,${overlayOpacity})` : `rgba(239,68,68,${overlayOpacity})`;
 
-  // Card transform — arc exit to corner, opposite-corner entry
+  // Card transform — horizontal vinyl-spin: exit spins off to the side, entry rises from opposite side
   const cardStyle: React.CSSProperties = {
     transform: exitDir === "right"
-      ? "translateX(110%) translateY(70%) rotate(55deg)"
+      ? "translateX(125%) rotate(95deg)"
       : exitDir === "left"
-      ? "translateX(-110%) translateY(70%) rotate(-55deg)"
+      ? "translateX(-125%) rotate(-95deg)"
       : enterFromDir === "left"
-      ? "translateX(-110%) translateY(70%) rotate(-45deg)"
+      ? "translateX(-125%) rotate(-80deg)"
       : enterFromDir === "right"
-      ? "translateX(110%) translateY(70%) rotate(45deg)"
-      : `translateX(${dragOffset}px) rotate(${dragOffset * 0.06}deg)`,
+      ? "translateX(125%) rotate(80deg)"
+      : `translateX(${dragOffset}px) rotate(${dragOffset * 0.05}deg)`,
     transition: isDraggingRef.current || enterFromDir !== null
       ? "none"
-      : "transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)",
+      : exitDir !== null
+      ? "transform 0.28s cubic-bezier(0.4, 0, 1, 0.6)"   // fast exit — accelerates out
+      : "transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1)", // spring entry — overshoots slightly then settles
     cursor: isDraggingRef.current ? "grabbing" : "grab",
     userSelect: "none",
     touchAction: "none",
