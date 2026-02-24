@@ -60,11 +60,25 @@ export function FriendsSection({ currentUserId }: { currentUserId: string }) {
     if (!ids.length) { setFriendData({}); return; }
     setLoading(true);
     try {
+      // Load cached data immediately for fast render
       const res = await fetch(`/api/friends/data?ids=${ids.join(",")}`);
       const json = await res.json() as { users: UserRecord[] };
       const map: Record<string, UserRecord> = {};
       for (const u of json.users) map[u.userId] = u;
       setFriendData(map);
+
+      // Then refresh lastTrack in the background using stored refresh tokens
+      fetch(`/api/friends/refresh?ids=${ids.join(",")}`)
+        .then((r) => r.json())
+        .then((fresh: { users: UserRecord[] }) => {
+          if (!fresh.users?.length) return;
+          setFriendData((prev) => {
+            const next = { ...prev };
+            for (const u of fresh.users) next[u.userId] = u;
+            return next;
+          });
+        })
+        .catch(() => {});
     } catch {
       // non-fatal
     } finally {
