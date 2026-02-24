@@ -153,13 +153,15 @@ export function useSpotifyEmbed() {
   }
 
   // Call during a user gesture to unlock browser autoplay for the iframe.
-  // play() unlocks the iOS audio context; pause() silences the placeholder
-  // immediately so it's never audible before the real track loads.
+  // When nothing is playing (initial unlock before pool loads), play()+pause()
+  // silences the placeholder track without making it audible.
+  // When a real track is already playing (swipe transitions), just play() keeps
+  // the iOS activation window alive without interrupting playback.
   function prime() {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     ctrl.play();
-    ctrl.pause();
+    if (!isPlayingRef.current) ctrl.pause();
   }
 
   return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };
