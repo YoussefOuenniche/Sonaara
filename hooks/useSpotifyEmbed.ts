@@ -2,40 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Silent WAV — played via a dedicated activator element during the first user
-// gesture so iOS permanently unlocks audio for this page without touching the
-// main player's state or src.
-const SILENT_AUDIO =
+// Silent WAV played through a dedicated element during the "Go" button tap
+// so iOS permanently unlocks audio for this page. The main player element
+// is never touched during unlock, so there are no src-race conditions.
+const UNLOCK_SRC =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
-export function useSpotifyEmbed() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const activatorRef = useRef<HTMLAudioElement | null>(null);
-  // Ref mirrors isPlaying so togglePlay always reads the latest value even
-  // if React hasn't flushed the state update yet (avoids stale-closure bug).
+export function useAudioPlayer() {
+  const audioRef  = useRef<HTMLAudioElement | null>(null);
+  const unlockRef = useRef<HTMLAudioElement | null>(null);
+  // Ref mirrors state so togglePlay always reads the latest value even when
+  // React hasn't flushed the re-render yet (avoids stale-closure on mobile).
   const isPlayingRef = useRef(false);
-  const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  function setPlayingState(v: boolean) {
+  function setPlaying(v: boolean) {
     isPlayingRef.current = v;
     setIsPlaying(v);
   }
 
   useEffect(() => {
-    const audio = new Audio();
-    audioRef.current = audio;
+    const audio  = new Audio();
+    const unlock = new Audio(UNLOCK_SRC);
+    unlock.volume = 0;
 
-    // Separate element used only to unlock iOS audio — never audible.
-    const activator = new Audio(SILENT_AUDIO);
-    activator.volume = 0;
-    activatorRef.current = activator;
+    audioRef.current  = audio;
+    unlockRef.current = unlock;
 
-    setIsReady(true);
-
-    const onPlaying = () => setPlayingState(true);
-    const onPause  = () => setPlayingState(false);
-    const onEnded  = () => setPlayingState(false);
+    const onPlaying = () => setPlaying(true);
+    const onPause   = () => setPlaying(false);
+    const onEnded   = () => setPlaying(false);
 
     audio.addEventListener("playing", onPlaying);
     audio.addEventListener("pause",   onPause);
@@ -46,22 +42,17 @@ export function useSpotifyEmbed() {
       audio.removeEventListener("pause",   onPause);
       audio.removeEventListener("ended",   onEnded);
       audio.pause();
-      audio.src = "";
-      audioRef.current   = null;
-      activatorRef.current = null;
-      setIsReady(false);
-      setPlayingState(false);
+      audio.src     = "";
+      audioRef.current  = null;
+      unlockRef.current = null;
     };
   }, []);
 
-  // Set a new preview URL and start playing.
-  // A null previewUrl (track has no 30s preview) is silently ignored.
+  /** Load a preview URL and begin playback. Null = no preview available, no-op. */
   function loadAndPlay(previewUrl: string | null) {
     const audio = audioRef.current;
     if (!audio || !previewUrl) return;
-    audio.pause();
     audio.src = previewUrl;
-    audio.currentTime = 0;
     audio.play().catch(() => {});
   }
 
@@ -76,14 +67,15 @@ export function useSpotifyEmbed() {
     else audio.play().catch(() => {});
   }
 
-  // Call during a user gesture to unlock iOS audio for the entire page session.
-  // The activator element plays a silent clip — no sound, but iOS permanently
-  // marks this page as audio-activated so all subsequent play() calls succeed.
+  /**
+   * Call synchronously inside a user-gesture handler (e.g. the "Go" button tap)
+   * before any async work begins. Plays a zero-volume silent clip to permanently
+   * unlock this page's audio on iOS — all subsequent play() calls then succeed
+   * from any context (useEffect, setTimeout, etc.).
+   */
   function prime() {
-    const act = activatorRef.current;
-    if (!act) return;
-    act.play().then(() => act.pause()).catch(() => {});
+    unlockRef.current?.play().then(() => unlockRef.current?.pause()).catch(() => {});
   }
 
-  return { isReady, isPlaying, loadAndPlay, pause, togglePlay, prime };
+  return { isPlaying, loadAndPlay, pause, togglePlay, prime };
 }

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { VinylLogo } from "@/components/VinylLogo";
 import type { DiscoverTrack } from "@/types";
 import { GENRE_UMBRELLAS } from "@/lib/genres";
-import { useSpotifyEmbed } from "@/hooks/useSpotifyEmbed";
+import { useAudioPlayer } from "@/hooks/useSpotifyEmbed";
 
 
 type Phase = "prompt" | "cards";
@@ -30,7 +30,7 @@ export function DiscoverView() {
   const firstPlayDoneRef = useRef(false);
   const [done, setDone] = useState(false);
   const exitingRef = useRef(false);
-  const { isReady: embedReady, isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useSpotifyEmbed();
+  const { isPlaying: embedPlaying, loadAndPlay, pause: embedPause, togglePlay: embedTogglePlay, prime: embedPrime } = useAudioPlayer();
 
   // Swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -73,11 +73,9 @@ export function DiscoverView() {
 
   // Load and play the 30-second preview whenever the card changes.
   useEffect(() => {
-    if (current && embedReady) {
-      loadAndPlay(current.previewUrl);
-    }
+    if (current) loadAndPlay(current.previewUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, embedReady]);
+  }, [current?.id]);
 
   // Show spinner until the first track actually starts playing (max 2s fallback)
   const firstTrackId = pool[0]?.id ?? null;
@@ -591,7 +589,7 @@ export function DiscoverView() {
               {/* Play/pause — white */}
               <button
                 onClick={() => { triggerPlayAnim(); togglePlay(); }}
-                disabled={!embedReady}
+                disabled={false}
                 className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-100 disabled:opacity-30"
                 style={{
                   background: playAnim ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)",
