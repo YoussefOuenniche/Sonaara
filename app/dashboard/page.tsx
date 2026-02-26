@@ -16,7 +16,10 @@ import { generateSignature } from "@/lib/claude";
 import { LastPlayedCard } from "@/components/LastPlayedCard";
 import { SignatureCard } from "@/components/SignatureCard";
 import { FriendsSection } from "@/components/FriendsSection";
+import { MusicPodSection } from "@/components/MusicPodSection";
 import { BottomNav } from "@/components/BottomNav";
+import { getPod } from "@/lib/pods";
+import { getUsers } from "@/lib/store";
 import type { Signature, Track, TrackWithGenres } from "@/types";
 
 export default async function DashboardPage() {
@@ -141,6 +144,21 @@ export default async function DashboardPage() {
     [yesterdayKey]: yesterdayRawTracks,
   };
 
+  // Pod data — loaded if the user is a pod member (session.podId is set after login)
+  const podId = session.podId ?? null;
+  const podData = podId
+    ? await getPod(podId).then(async (pod) => {
+        if (!pod) return null;
+        const otherIds = pod.memberIds.filter((id) => id !== userId);
+        const members = otherIds.length ? await getUsers(otherIds) : [];
+        // Include self in member list so admin can see everyone
+        const self = existingUser
+          ? [{ ...existingUser, userId, userName: session.userName ?? userId, userImage: session.userImage ?? null }]
+          : [];
+        return { pod, members: [...self, ...members] };
+      }).catch(() => null)
+    : null;
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
       <div
@@ -171,8 +189,17 @@ export default async function DashboardPage() {
           tracksPerDay={tracksPerDay}
         />
 
-        {/* 2. Friends' signatures */}
-        {userId && <FriendsSection currentUserId={userId} />}
+        {/* 2. Pod or friends */}
+        {userId && podData ? (
+          <MusicPodSection
+            pod={podData.pod}
+            members={podData.members}
+            currentUserId={userId}
+            initialHidden={existingUser?.hiddenPodMemberIds ?? []}
+          />
+        ) : (
+          userId && <FriendsSection currentUserId={userId} />
+        )}
 
         {/* 3. Last played — bottom */}
         {lastTrack ? (

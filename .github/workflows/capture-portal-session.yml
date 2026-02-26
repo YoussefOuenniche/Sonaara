@@ -1,0 +1,38 @@
+name: Capture Spotify Dev Portal Session
+
+on:
+  workflow_dispatch:
+    inputs:
+      pod_id:
+        description: Pod ID
+        required: true
+        default: main
+      webhook_url:
+        description: App webhook base URL
+        required: true
+        default: https://sonaara.vercel.app
+
+jobs:
+  capture-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        run: |
+          npm install @playwright/test
+          npx playwright install chromium --with-deps
+
+      - name: Capture session
+        run: node scripts/capture-portal-session.js
+        env:
+          POD_ID: ${{ inputs.pod_id }}
+          WEBHOOK_URL: ${{ inputs.webhook_url }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          SPOTIFY_DEV_EMAIL: ${{ secrets.SPOTIFY_DEV_EMAIL }}
+          SPOTIFY_DEV_PASSWORD: ${{ secrets.SPOTIFY_DEV_PASSWORD }}

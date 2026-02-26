@@ -52,3 +52,23 @@ export interface AggregatedAudioFeatures {
   avgAcousticness: number;
   avgTempo: number;
 }
+
+export interface PodRequest {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  requestedAt: string;
+  status: "pending" | "processing" | "approved" | "denied";
+}
+
+export interface Pod {
+  podId: string;
+  podName: string;
+  adminUserId: string;
+  memberIds: string[];
+  pendingRequests: PodRequest[];
+  spotifyAppId: string;
+  devPortalSessionEncrypted: string | null;
+  devPortalSessionExpiresAt: string | null;
+  createdAt: string;
+}

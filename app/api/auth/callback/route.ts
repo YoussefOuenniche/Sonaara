@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { addToUserIndex, storeUserRefreshToken } from "@/lib/store";
+import { findUserPod } from "@/lib/pods";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -44,6 +45,13 @@ export async function GET(request: NextRequest) {
   session.userId = profile.id ?? null;
   session.userName = profile.display_name ?? profile.id ?? "there";
   session.userImage = profile.images?.[0]?.url ?? null;
+
+  // Check if this user is a pod member and tag the session
+  if (profile.id) {
+    const podId = await findUserPod(profile.id).catch(() => null);
+    session.podId = podId ?? undefined;
+  }
+
   await session.save();
 
   // Persist refresh token + add user to global index so the daily cron can reach them

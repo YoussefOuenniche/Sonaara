@@ -1,0 +1,47 @@
+name: Manage Spotify Allowlist
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "add or remove"
+        required: true
+      email:
+        description: Spotify account email
+        required: true
+      pod_id:
+        description: Pod ID
+        required: true
+        default: main
+      webhook_url:
+        description: App webhook base URL
+        required: true
+        default: https://sonaara.vercel.app
+
+jobs:
+  manage-allowlist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        run: |
+          npm install @playwright/test
+          npx playwright install chromium --with-deps
+
+      - name: Manage allowlist
+        run: node scripts/manage-allowlist.js
+        env:
+          ACTION: ${{ inputs.action }}
+          EMAIL: ${{ inputs.email }}
+          POD_ID: ${{ inputs.pod_id }}
+          WEBHOOK_URL: ${{ inputs.webhook_url }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          SPOTIFY_APP_ID: ${{ secrets.SPOTIFY_APP_ID }}
+          SPOTIFY_DEV_EMAIL: ${{ secrets.SPOTIFY_DEV_EMAIL }}
+          SPOTIFY_DEV_PASSWORD: ${{ secrets.SPOTIFY_DEV_PASSWORD }}

@@ -8,6 +8,7 @@ export interface SessionData {
   userName?: string;
   userImage?: string;
   userId?: string;
+  podId?: string; // set when the user is a pod member
 }
 
 export const sessionOptions = {

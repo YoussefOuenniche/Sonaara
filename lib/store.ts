@@ -24,6 +24,8 @@ export interface UserRecord {
   skippedTracks?: DiscoverTrack[]; // full skipped track objects (for Songs tab display)
   refreshToken?: string; // Spotify refresh token — used by daily cron
   timezone?: string; // IANA timezone string, e.g. "America/New_York"
+  userEmail?: string; // Spotify account email — collected on join, used for allowlist
+  hiddenPodMemberIds?: string[]; // pod members this user has hidden from their own view
 }
 
 function cleanHistory(
